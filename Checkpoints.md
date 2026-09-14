@@ -1,3 +1,16 @@
+# Notes
+PWM: Password manager
+### collecting ideas / brainstorming
+(?) Create Browser extension & API backend; Give backend access to simple user interface (See and delete Passwords here) rest through Extension
+- Extension looks for login / register forms (input ... =password)
+- Forward request to PWM API / Backend
+- API Looks up relevant Password
+- (?) Retrieve generated Session and send back to user (?)
+- (?) Basically MITM, possible, too difficult? (?)
+  - (PRO) Password never leaves Backend
+  - (NEG) User authentication and validation
+
+
 # Checkpoint 1 req.: 
 ### *Due: Tuesday, 22 September 2026, 12:00 AM*
 
