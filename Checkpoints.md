@@ -9,6 +9,8 @@ PWM: Password manager
 - (?) Basically MITM, possible, too difficult? (?)
   - (PRO) Password never leaves Backend
   - (NEG) User authentication and validation
+ 
+(?) C# or HTML, CSS, JS and PHP?
 
 
 # Checkpoint 1 req.: 
