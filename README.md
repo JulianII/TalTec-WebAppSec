@@ -20,6 +20,7 @@ Design and create a secure web-based password manager.
 - Control user access
 - Defend against common web application attacks
 - Use TOTP MFA
+- Monitor and Log all services
 
 
 **exclusions:**
