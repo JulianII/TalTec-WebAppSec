@@ -40,8 +40,8 @@ features, and how to run it locally.
 | Tasks | Status |
 | ------ | --- |
 | Design Document | none |
-| System Diagram | none |
+| System Diagram | well in progress |
 | Threat model | none |
 | Cryptographic design | none |
 | Auth and Session model | none |
-| Propper Readme | none |
+| Propper Readme | scope declared |
