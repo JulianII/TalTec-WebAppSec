@@ -9,8 +9,8 @@ This project was developed during the autumn semester of 2026 as part of the Web
 This design document will include the system architecture diagram, a threat model mapped to the OWASP top 10, the cryptographic design, planned authentication and session model.
 
 # System architecture Diagram
+<img width="374" height="601" alt="SysArc-WebAppSec (1)" src="https://github.com/user-attachments/assets/a11c5238-c1ac-41be-9fd3-cf5f73d23182" />
 
-![][image1]  
 created using draw.io
 
 # **Threat model**
@@ -113,6 +113,7 @@ The master password is never stored by the application. Instead, it is used to d
 ## Key Hierarchy
 
 Each unique user is provided with a single randomly generated PEK. This PEK gets encrypted using the KEK which gets derived from the user's Master Password.  
+<img width="370" height="310" alt="Key-Hierarchy" src="https://github.com/user-attachments/assets/13e1c289-2ba2-4390-9174-2fa7a2801c43" />
 
 This PEK sits encrypted on the Database, it is used to encrypt and decrypt the external credentials.
 
@@ -139,6 +140,7 @@ The master password is transmitted to the API only over an encrypted HTTPS/TLS c
 ## Password Encryption Key (PEK)
 
 A unique PEK is generated for each user using a cryptographically secure random number generator.
+<img width="573" height="431" alt="RevCryptMod-WebAppSec" src="https://github.com/user-attachments/assets/28dfe126-9ec0-4e78-ae31-085eb4e4f841" />
 
 The PEK is a high-entropy key and is used for encryption and decryption of the user's vault data.
 
@@ -151,6 +153,7 @@ After successful authentication, the API derives the user's KEK and uses it to d
 ## Vault Encryption
 
 Sensitive vault information, including stored usernames and passwords, is encrypted before being stored in the database.
+<img width="460" height="511" alt="CryptMod-WebAppSec" src="https://github.com/user-attachments/assets/f01db9e2-8626-4c0e-a163-81d2542fdc18" />
 
 The PEK is used with AES-256-GCM to provide both confidentiality and integrity.
 
@@ -195,6 +198,7 @@ The server does not store the token in plaintext. Instead, a cryptographic hash 
 Possession of a valid trusted device token does not provide direct access to the user's vault. It is only used to satisfy the trusted-device requirement for operations that do not require full authorization.
 
 # **Planned authentication model**
+<img width="512" height="671" alt="AuthMod" src="https://github.com/user-attachments/assets/a4a17f62-621d-440b-95d2-0deef8d95969" />
 
 The application will use two authentication levels, **reduced authentication** and **full authentication**.
 
