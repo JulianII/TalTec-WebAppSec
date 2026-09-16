@@ -39,9 +39,9 @@ features, and how to run it locally.
 ### Checklist:
 | Tasks | Status |
 | ------ | --- |
-| Design Document | none |
-| System Diagram | well in progress |
-| Threat model | none |
-| Cryptographic design | none |
-| Auth and Session model | none |
+| Design Document | close to finish |
+| System Diagram | DONE|
+| Threat model | nearly done |
+| Cryptographic design | nearly done |
+| Auth and Session model | nearly done |
 | Propper Readme | scope declared |
