@@ -66,8 +66,8 @@ The following software is required to run the Password Manager locally:
 1. Clone the repository and navigate to the project directory:
 
    ```bash
-   git clone <repository-url>
-   cd <repository-directory>
+   git clone https://github.com/JulianII/TalTec-WebAppSec.git
+   cd /path/to/repo/TalTec-WebAppSec/
    ```
 
 2. Start the PostgreSQL database using Docker Compose:
