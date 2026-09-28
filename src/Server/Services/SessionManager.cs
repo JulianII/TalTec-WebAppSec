@@ -50,20 +50,20 @@ public class SessionManager (
 
         // Compare active-sessions (from database) hash with user-sent credential-hash
         if (
-            activeSession.CredentialHash == hash &&
             activeSession.Revoked == false &&
-            activeSession.ExpiresAt >= DateTime.UtcNow
-        ) return new AuthenticatedUser
-        {
-          AuthenticationLevel = activeSession.AuthLevel,
-          UserID = activeSession.UserID  
-        };
+            activeSession.ExpiresAt > DateTime.UtcNow
+        ) 
+            return new AuthenticatedUser
+            {
+                AuthenticationLevel = activeSession.AuthLevel,
+                UserID = activeSession.UserID  
+            };
 
         return null;
     }
 
-    public bool RevokeSession (SessionCredential session)
+    public bool RevokeSession (string credential)
     {
-        return true;
+        return storage.SetRevokeSessionFlag(cryptographer.HashSessionCredential(credential));
     }
 }

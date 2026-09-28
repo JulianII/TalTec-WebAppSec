@@ -21,4 +21,9 @@ public class StorageService
     {
         return new SessionCredential();
     }
+
+    public bool SetRevokeSessionFlag (string CredentialHash)
+    {
+        return true;
+    }
 }
