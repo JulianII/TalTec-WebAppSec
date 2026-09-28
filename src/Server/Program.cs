@@ -1,13 +1,10 @@
-using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
-
-Env.Load("../../.env");
 
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString =
-    $"Host=localhost;Port=5432;" +
+    $"Host=db;Port=5432;" +
     $"Database={builder.Configuration["POSTGRES_DB"]};" +
     $"Username={builder.Configuration["POSTGRES_USER"]};" +
     $"Password={builder.Configuration["POSTGRES_PASSWORD"]}";
