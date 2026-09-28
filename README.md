@@ -1,3 +1,5 @@
+# TODO: Update scope, etc. Update "How-to run".
+
 # TalTec-WebAppSec
 ### Web-Based Secure Password Manager
 # Planned Scope
