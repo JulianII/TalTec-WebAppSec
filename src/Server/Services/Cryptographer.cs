@@ -10,4 +10,14 @@ public class Cryptographer
         if (password == storedVerifier) return true;
         else return false;
     }
+
+    public string GenerateSessionCredential ()
+    {
+        return "SessionCredential";
+    }
+
+    public string HashSessionCredential (string credential)
+    {
+        return credential;
+    }
 }

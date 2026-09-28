@@ -10,7 +10,7 @@ public class AuthenticationService(
 
         var authenticatedUser = new AuthenticatedUser();
 
-        User databaseUser = storage.GetUserFromDatabase(request.Username);
+        User databaseUser = storage.GetUserByUsername(request.Username);
 
         authenticatedUser.UserID = databaseUser.UserID;
 

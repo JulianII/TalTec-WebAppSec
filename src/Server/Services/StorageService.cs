@@ -1,6 +1,6 @@
 public class StorageService
 {
-    public User GetUserFromDatabase (string username)
+    public User GetUserByUsername (string username)
     {
         User requestedUser = new User (); 
 
@@ -10,5 +10,15 @@ public class StorageService
         requestedUser.PasswordVerifier = "Password";
 
         return requestedUser;
+    }
+
+    public bool CreateSessionEntry (SessionCredential session)
+    {
+        return true;
+    }
+
+    public SessionCredential GetSessionCredentialByCredential (string credential)
+    {
+        return new SessionCredential();
     }
 }
