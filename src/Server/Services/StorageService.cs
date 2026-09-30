@@ -1,5 +1,7 @@
 public class StorageService
 {
+
+    private SessionCredential? testSession;
     public User GetUserByUsername (string username)
     {
         User requestedUser = new User (); 
@@ -14,16 +16,28 @@ public class StorageService
 
     public bool CreateSessionEntry (SessionCredential session)
     {
+        testSession = session;
         return true;
     }
 
-    public SessionCredential GetSessionCredentialByCredential (string credential)
+    public SessionCredential? GetSessionCredentialByCredential(string credentialHash)
     {
-        return new SessionCredential();
+        if (testSession?.CredentialHash == credentialHash)
+        {
+            return testSession;
+        }
+
+        return null;
     }
 
-    public bool SetRevokeSessionFlag (string CredentialHash)
-    {
+    public bool SetRevokeSessionFlag(string credentialHash)
+    {   
+        if (testSession?.CredentialHash != credentialHash)
+        {
+            return false;
+        }
+
+        testSession.Revoked = true;
         return true;
     }
 }

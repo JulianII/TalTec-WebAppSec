@@ -52,6 +52,8 @@ public static class AuthEndpoints
                 Expires = session.ExpiresAt
             });
 
+            logger.LogInformation("Successful Login for {username} at {time}", request.Username, DateTime.UtcNow);
+
             return Results.Ok();
         });
 

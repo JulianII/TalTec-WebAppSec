@@ -44,8 +44,22 @@ public class SessionManager (
         // Transform raw credential
         String hash = cryptographer.HashSessionCredential(credential);
 
+        
+
         // Search for active session.
         SessionCredential activeSession = storage.GetSessionCredentialByCredential (hash);
+        
+        Console.WriteLine($"Credential: {credential}");
+        Console.WriteLine($"Hash: {hash}");
+        Console.WriteLine($"Session found: {activeSession != null}");
+
+        if (activeSession != null)
+        {
+            Console.WriteLine($"Revoked: {activeSession.Revoked}");
+            Console.WriteLine($"Expires: {activeSession.ExpiresAt}");
+            Console.WriteLine($"Now: {DateTime.UtcNow}");
+        }
+
         if (activeSession == null) return null;
 
         // Compare active-sessions (from database) hash with user-sent credential-hash

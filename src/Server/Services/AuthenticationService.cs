@@ -27,9 +27,9 @@ public class AuthenticationService(
         // Compare Password hashes
         if (cryptographer.VerifyArgon2idPassword(request.Password, databaseUser.PasswordVerifier)){
             authenticatedUser.AuthenticationLevel = AuthenticationLevel.Reduced;
-            logger.LogInformation("Login Successfull for: {id}", authenticatedUser.UserID);
+            logger.LogInformation("Login Successfull for user: {username}", request.Username);
         } else {
-            logger.LogWarning("Invalid Login for: {id}", authenticatedUser.UserID);
+            logger.LogWarning("Invalid Login for user: {username}", request.Username);
             return null;
         }
 

@@ -13,9 +13,9 @@ builder.Services.AddDbContext<PasswordManagerDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<AuthenticationService>();
-builder.Services.AddScoped<SessionManager>();
-builder.Services.AddScoped<StorageService>();
+builder.Services.AddSingleton<StorageService>(); // <-- ONLY SINGLETON FOR TESTING PURPOSES REMOVE AFTER DEV, please TODO
 builder.Services.AddScoped<Cryptographer>();
+builder.Services.AddScoped<SessionManager>();
 
 var app = builder.Build();
 
