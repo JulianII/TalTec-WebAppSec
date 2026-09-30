@@ -1,3 +1,5 @@
+# TODO: Update scope, etc. Update "How-to run".
+
 # TalTec-WebAppSec
 ### Web-Based Secure Password Manager
 # Planned Scope
@@ -50,7 +52,7 @@ The project is subject to the following submission deadlines:
 | Final report and code submission | Sunday, 29 November 2026, 12:00 AM   |
 
 
-# How to Run
+# How to Run (!Outdated switched to full docker integration TODO)
 
 ## Prerequisites
 
