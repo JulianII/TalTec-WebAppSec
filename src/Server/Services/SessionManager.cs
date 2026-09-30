@@ -4,9 +4,8 @@ public class SessionManager (
         ILogger<SessionManager> logger
     )
 {
-    private readonly int SessionExpiryTimeMinutes = 5;
+    private const int SessionExpiryTimeMinutes = 5;
 
-    // TODO: Implement propper ExpiresAt and Error-Hanlding for Database issues.
     public SessionResult? CreateSession (AuthenticatedUser user)
     {
         DateTime currentTime = DateTime.UtcNow;
@@ -38,29 +37,18 @@ public class SessionManager (
         return result;
     }
 
-    // TODO: provably should use better comparison than string == string
     public AuthenticatedUser? ValidateSession (string credential)
     {
         // Transform raw credential
         String hash = cryptographer.HashSessionCredential(credential);
 
-        
-
         // Search for active session.
-        SessionCredential activeSession = storage.GetSessionCredentialByCredential (hash);
-        
-        Console.WriteLine($"Credential: {credential}");
-        Console.WriteLine($"Hash: {hash}");
-        Console.WriteLine($"Session found: {activeSession != null}");
-
-        if (activeSession != null)
-        {
-            Console.WriteLine($"Revoked: {activeSession.Revoked}");
-            Console.WriteLine($"Expires: {activeSession.ExpiresAt}");
-            Console.WriteLine($"Now: {DateTime.UtcNow}");
+        SessionCredential? activeSession = storage.GetSessionCredentialByCredentialHash (hash);
+        if (activeSession == null) 
+        { 
+            logger.LogWarning("No current active session for");
+            return null; 
         }
-
-        if (activeSession == null) return null;
 
         // Compare active-sessions (from database) hash with user-sent credential-hash
         if (

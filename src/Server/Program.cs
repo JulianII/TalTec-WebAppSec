@@ -13,7 +13,7 @@ builder.Services.AddDbContext<PasswordManagerDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<AuthenticationService>();
-builder.Services.AddSingleton<StorageService>(); // <-- ONLY SINGLETON FOR TESTING PURPOSES REMOVE AFTER DEV, please TODO
+builder.Services.AddScoped<StorageService>();
 builder.Services.AddScoped<Cryptographer>();
 builder.Services.AddScoped<SessionManager>();
 

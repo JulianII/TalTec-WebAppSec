@@ -3,6 +3,7 @@
 */
 
 using System.Buffers;
+using System.Data.Common;
 using Microsoft.OpenApi;
 
 public static class AuthEndpoints
@@ -54,6 +55,74 @@ public static class AuthEndpoints
 
             logger.LogInformation("Successful Login for {username} at {time}", request.Username, DateTime.UtcNow);
 
+            return Results.Ok();
+        });
+
+        app.MapPost("/api/auth/register", (
+            RegistrationRequest request,
+            AuthenticationService authenticationService,
+            SessionManager sessionManager,
+            HttpResponse response,
+            Cryptographer cryptographer,
+            StorageService storageService,
+            ILoggerFactory loggerFactory) =>
+        {
+            ILogger logger = loggerFactory.CreateLogger("AuthEndpoints.Register");
+
+            if(request.Password != request.VerifyPassword) return Results.BadRequest("Passwords differ");
+
+            // create user for database
+            User databaseEntry = new User
+            {
+                // UserID - left blank gets auto gened.
+                PasswordVerifier = cryptographer.CreateArgon2idVerifier(request.Password),
+                Username = request.Username
+            };
+
+            if (!storageService.CreateUser(databaseEntry))
+            {
+                logger.LogWarning("Database failed to create user: {username}", request.Username);
+                return Results.Problem();
+            }
+
+            // Create authenticatedUser for created User
+            AuthenticatedUser? user = authenticationService.Login(new LoginRequest
+            {
+                Password = request.Password,
+                Username = request.Username   
+            });
+            if (user == null)
+            {
+                logger.LogError("Failed to authenticate just created user: {username}", request.Username);
+                return Results.Problem();
+            }
+
+            // Create Session for created user
+            SessionResult? session = sessionManager.CreateSession(user);
+            if (session == null)
+            {
+                logger.LogWarning("Failed to create session for user: {username} at {time}", request.Username, DateTime.UtcNow);
+                return Results.Problem();
+            }
+
+            // Validate the created session and check that it belongs to the authenticated user
+            if(sessionManager.ValidateSession(session.Credential)?.UserID != user.UserID)
+            {
+                logger.LogWarning("Failed to validate session for user: {username} at {time}", request.Username, DateTime.UtcNow);
+                return Results.Problem();
+            }
+
+            // Send Session-Cookie to user      
+            response.Cookies.Append("session", session.Credential, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = session.ExpiresAt
+            });
+
+            logger.LogInformation("Successful registration for {username} at {time}", request.Username, DateTime.UtcNow);
             return Results.Ok();
         });
 
