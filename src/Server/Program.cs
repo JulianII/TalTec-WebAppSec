@@ -12,6 +12,11 @@ var connectionString =
 builder.Services.AddDbContext<PasswordManagerDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+builder.Services.AddScoped<AuthenticationService>();
+builder.Services.AddScoped<SessionManager>();
+builder.Services.AddScoped<StorageService>();
+builder.Services.AddScoped<Cryptographer>();
+
 var app = builder.Build();
 
 app.UseDefaultFiles();
@@ -21,5 +26,7 @@ app.MapGet("/api/test", () =>
 {
     return Results.Ok(new { message = "API works!" });
 });
+
+app.MapAuthEndpoints();
 
 app.Run();
