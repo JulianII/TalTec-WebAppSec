@@ -93,22 +93,11 @@ public static class AuthEndpoints
             
             // Get credential from cookie
             string? cookieCredential = request.Cookies["session"];
-            if(cookieCredential == null)
-            {
-                logger.LogWarning("No Valid Cookie at {time}", DateTime.UtcNow);
-                return Results.Unauthorized();
-            }
 
-            // Validate incoming session
-            AuthenticatedUser? user = sessionManager.ValidateSession(cookieCredential);
-            if(user == null)
-            {
-                logger.LogWarning("Failed to validate credential at {time}", DateTime.UtcNow);
-                return Results.Problem();
-            }
+            // No need to validate session. If the user doesnt have a session we can keep it idempotent this way.
 
             // revoke session
-            if (sessionManager.RevokeSession(cookieCredential))
+            if (!sessionManager.RevokeSession(cookieCredential))
             {
                 logger.LogWarning("Failed to revoke session at {time}", DateTime.UtcNow);
                 return Results.Problem();
