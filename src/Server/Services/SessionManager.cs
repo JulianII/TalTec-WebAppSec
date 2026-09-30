@@ -15,7 +15,7 @@ public class SessionManager (
         String credential = cryptographer.GenerateSessionCredential();
 
         // Create Raw Session Credentials
-        SessionCredential session = new SessionCredential
+        SessionCredential session = new()
         {
             CredentialHash = cryptographer.HashSessionCredential(credential),
             UserID = user.UserID,
@@ -29,7 +29,7 @@ public class SessionManager (
         if (!storage.CreateSessionEntry(session)) return null;  
 
         // Create Session Result object
-        SessionResult result = new SessionResult
+        SessionResult result = new()
         {
             Credential = credential,
             ExpiresAt = expiry
@@ -62,8 +62,9 @@ public class SessionManager (
         return null;
     }
 
-    public bool RevokeSession (string credential)
+    public bool RevokeSession (string? credential)
     {
+        if(credential == null) return false;
         return storage.SetRevokeSessionFlag(cryptographer.HashSessionCredential(credential));
     }
 }
