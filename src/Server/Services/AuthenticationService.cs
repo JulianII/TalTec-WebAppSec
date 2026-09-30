@@ -8,7 +8,17 @@ public class AuthenticationService(
     {
         logger.LogInformation("Login Attempt for {username}", request.Username);
 
-        var authenticatedUser = new AuthenticatedUser();
+        // TEMPORARY TEST CASE FOR LOGIN WITHOUT DB BACKEND: DELETE AFTER, please
+        if (request.Username == "test" && request.Password == "passwort")
+        {
+            return new AuthenticatedUser
+            {
+                UserID = 0,
+                AuthenticationLevel = AuthenticationLevel.Reduced
+            };
+        }
+
+        AuthenticatedUser authenticatedUser = new AuthenticatedUser();
 
         User databaseUser = storage.GetUserByUsername(request.Username);
 
