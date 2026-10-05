@@ -8,24 +8,19 @@ public class AuthenticationService(
     {
         logger.LogInformation("Login Attempt for {username}", request.Username);
 
-        // TEMPORARY TEST CASE FOR LOGIN WITHOUT DB BACKEND: DELETE AFTER, please
-        if (request.Username == "test" && request.Password == "passwort")
-        {
-            return new AuthenticatedUser
-            {
-                UserID = 0,
-                AuthenticationLevel = AuthenticationLevel.Reduced
-            };
-        }
-
         AuthenticatedUser authenticatedUser = new AuthenticatedUser();
 
-        User databaseUser = storage.GetUserByUsername(request.Username);
+        User? databaseUser = storage.GetUserByUsername(request.Username);
+        if(databaseUser == null)
+        {
+            logger.LogWarning("User: {username} not found. ", request.Username);
+            return null;
+        }
 
         authenticatedUser.UserID = databaseUser.UserID;
 
         // Compare Password hashes
-        if (cryptographer.VerifyArgon2idPassword(request.Password, databaseUser.PasswordVerifier)){
+        if (cryptographer.VerifyArgon2idPassword(request.Password, databaseUser.PasswordSalt, databaseUser.PasswordVerifier)){
             authenticatedUser.AuthenticationLevel = AuthenticationLevel.Reduced;
             logger.LogInformation("Login Successfull for user: {username}", request.Username);
         } else {

@@ -11,7 +11,7 @@ public class SessionManager (
         DateTime currentTime = DateTime.UtcNow;
         DateTime expiry = currentTime.AddMinutes(SessionExpiryTimeMinutes);
 
-        String credential = cryptographer.GenerateSessionCredential();
+        string credential = cryptographer.GenerateSessionCredential();
 
         // Create Raw Session Credentials
         SessionCredential session = new()

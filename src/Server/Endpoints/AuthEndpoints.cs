@@ -5,6 +5,7 @@
 using System.Buffers;
 using System.Data.Common;
 using Microsoft.OpenApi;
+using System.Text;
 
 public static class AuthEndpoints
 {
@@ -69,14 +70,22 @@ public static class AuthEndpoints
         {
             ILogger logger = loggerFactory.CreateLogger("AuthEndpoints.Register");
 
-            if(request.Password != request.VerifyPassword) return Results.BadRequest("Passwords differ");
+            logger.LogInformation("New user tried to register: {username} ", request.Username);
+
+            if(request.Password != request.VerifyPassword)
+            {
+                logger.LogInformation("Registration failed password consistency. ");
+                return Results.BadRequest("Passwords differ");
+            }
+            PasswordVerifierResult result = cryptographer.CreateArgon2idVerifier(request.Password);
 
             // create user for database
             User databaseEntry = new User
             {
                 // UserID - left blank gets auto gened.
-                PasswordVerifier = cryptographer.CreateArgon2idVerifier(request.Password),
-                Username = request.Username
+                PasswordVerifier = result.Hash,
+                Username = request.Username,
+                PasswordSalt = result.Salt
             };
 
             if (!storageService.CreateUser(databaseEntry))
@@ -85,6 +94,7 @@ public static class AuthEndpoints
                 return Results.Problem();
             }
 
+            // TODO: Avoid recalculating Argon2id during auto-login after registration; reuse the authenticated user directly.
             // Create authenticatedUser for created User
             AuthenticatedUser? user = authenticationService.Login(new LoginRequest
             {
