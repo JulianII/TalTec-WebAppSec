@@ -68,4 +68,10 @@ public class Cryptographer
         
         return hash;
     }
+
+    public EncryptionResult EncryptMessage(string message)
+    {
+
+        return new EncryptionResult();
+    }
 }

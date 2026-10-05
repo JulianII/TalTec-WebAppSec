@@ -18,5 +18,10 @@ public class PasswordManagerDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasIndex(s => s.Username)
             .IsUnique();
+        
+        modelBuilder.Entity<VaultEntry>()
+            .HasOne(v => v.User)
+            .WithMany(u => u.VaultEntries)
+            .HasForeignKey(v => v.UserID);
     }
 }

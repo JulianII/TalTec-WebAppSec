@@ -3,6 +3,12 @@ using Server.Data;
 public class StorageService (PasswordManagerDbContext db,
                             ILogger<StorageService> logger)
 {
+    public bool CreateVaultEntry(VaultEntry entry)
+    {
+        db.
+        return true;
+    }
+
     public User? GetUserByUsername (string username)
     {
         User? user;

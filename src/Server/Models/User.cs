@@ -4,5 +4,6 @@ public class User
     public string Username { get; set; }
     public byte[] PasswordVerifier { get; set; }
     public byte[] PasswordSalt { get; set; }
+    public ICollection<VaultEntry> VaultEntries { get; set; } = new List<VaultEntry>();
     
 }
