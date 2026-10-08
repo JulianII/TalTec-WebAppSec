@@ -6,7 +6,7 @@ public class SessionManager (
 {
     private const int SessionExpiryTimeMinutes = 5;
 
-    public SessionResult? CreateSession (AuthenticatedUser user)
+    public ResultSession? CreateSession (AuthenticatedUser user)
     {
         DateTime currentTime = DateTime.UtcNow;
         DateTime expiry = currentTime.AddMinutes(SessionExpiryTimeMinutes);
@@ -28,7 +28,7 @@ public class SessionManager (
         if (!storage.CreateSessionEntry(session)) return null;  
 
         // Create Session Result object
-        SessionResult result = new()
+        ResultSession result = new()
         {
             Credential = credential,
             ExpiresAt = expiry
