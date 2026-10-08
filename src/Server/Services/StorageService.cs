@@ -5,11 +5,10 @@ public class StorageService (PasswordManagerDbContext db,
 {
     public bool CreateVaultEntry(VaultEntry entry)
     {
-        db.
         return true;
     }
 
-    public User? GetUserByUsername (string username)
+    public User? GetUser (string username)
     {
         User? user;
 
@@ -24,6 +23,14 @@ public class StorageService (PasswordManagerDbContext db,
         if (user == null) logger.LogInformation("Unable to find username: {username}", username);
 
         return user;
+    }
+
+    public byte[]? GetVaultSalt(int userID)
+    {
+        User? user = db.Users.SingleOrDefault(a => a.UserID == userID);
+        if (user == null) logger.LogInformation("Unable to find username: {ID}", userID);
+
+        return user?.VaultSalt;
     }
 
     public bool CreateUser (User user)

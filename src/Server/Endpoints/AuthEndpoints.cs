@@ -13,7 +13,7 @@ public static class AuthEndpoints
     {
         // Handles Users-Login requests and returns respective IResults
         app.MapPost("/api/auth/login", (
-            LoginRequest request,
+            RequestLogin request,
             AuthenticationService authenticationService,
             SessionManager sessionManager,
             HttpResponse response,
@@ -30,7 +30,7 @@ public static class AuthEndpoints
             }
 
             // Create a session for the requested user and check validity
-            SessionResult? session = sessionManager.CreateSession(user);
+            ResultSession? session = sessionManager.CreateSession(user);
             if (session == null)
             {
                 logger.LogWarning("Failed to create session for user: {username} at {time}", request.Username, DateTime.UtcNow);
@@ -60,7 +60,7 @@ public static class AuthEndpoints
         });
 
         app.MapPost("/api/auth/register", (
-            RegistrationRequest request,
+            RequestRegistration request,
             AuthenticationService authenticationService,
             SessionManager sessionManager,
             HttpResponse response,
@@ -77,13 +77,13 @@ public static class AuthEndpoints
                 logger.LogInformation("Registration failed password consistency. ");
                 return Results.BadRequest("Passwords differ");
             }
-            PasswordVerifierResult result = cryptographer.CreateArgon2idVerifier(request.Password);
+            ResultPasswordVerifier result = cryptographer.CreateArgon2idVerifier(request.Password);
 
             // create user for database
             User databaseEntry = new User
             {
                 // UserID - left blank gets auto gened.
-                PasswordVerifier = result.Hash,
+                PasswordVerifier = result.PasswordVerifier,
                 Username = request.Username,
                 PasswordSalt = result.Salt
             };
@@ -96,7 +96,7 @@ public static class AuthEndpoints
 
             // TODO: Avoid recalculating Argon2id during auto-login after registration; reuse the authenticated user directly.
             // Create authenticatedUser for created User
-            AuthenticatedUser? user = authenticationService.Login(new LoginRequest
+            AuthenticatedUser? user = authenticationService.Login(new RequestLogin
             {
                 Password = request.Password,
                 Username = request.Username   
@@ -108,7 +108,7 @@ public static class AuthEndpoints
             }
 
             // Create Session for created user
-            SessionResult? session = sessionManager.CreateSession(user);
+            ResultSession? session = sessionManager.CreateSession(user);
             if (session == null)
             {
                 logger.LogWarning("Failed to create session for user: {username} at {time}", request.Username, DateTime.UtcNow);

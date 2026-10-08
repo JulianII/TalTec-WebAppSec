@@ -4,7 +4,7 @@ public static class VaultEndpoints
     {
         // Handles Users-Login requests and returns respective IResults
         app.MapPost("/api/vault/login", (
-            CreateVaultEntryRequest request,
+            RequestCreateVaultEntry request,
             VaultManager vaultManager,
             HttpRequest httpRequest,
             ILoggerFactory loggerFactory) =>
@@ -14,13 +14,13 @@ public static class VaultEndpoints
             string? sessionCredential = httpRequest.Cookies["session"];
             if (sessionCredential == null)
             {
-                logger.LogWarning("Missing Session for {username} ", request.Username);
+                logger.LogWarning("Missing Session for {username} ", request.ExternalUsername);
                 return Results.Unauthorized();
             }
 
             if (string.IsNullOrWhiteSpace(request.Title) ||
-                string.IsNullOrWhiteSpace(request.Username) ||
-                string.IsNullOrWhiteSpace(request.Password))
+                string.IsNullOrWhiteSpace(request.ExternalUsername) ||
+                string.IsNullOrWhiteSpace(request.MasterPassword))
             {
                 logger.LogWarning("Vault Entry contains empty required fields.");
                 return Results.BadRequest();

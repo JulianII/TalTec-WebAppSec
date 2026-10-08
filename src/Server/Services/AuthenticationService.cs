@@ -4,13 +4,13 @@ public class AuthenticationService(
     ILogger<AuthenticationService> logger
     )
 {
-    public AuthenticatedUser? Login(LoginRequest request)
+    public AuthenticatedUser? Login(RequestLogin request)
     {
         logger.LogInformation("Login Attempt for {username}", request.Username);
 
         AuthenticatedUser authenticatedUser = new AuthenticatedUser();
 
-        User? databaseUser = storage.GetUserByUsername(request.Username);
+        User? databaseUser = storage.GetUser(request.Username);
         if(databaseUser == null)
         {
             logger.LogWarning("User: {username} not found. ", request.Username);
