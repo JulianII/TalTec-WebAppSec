@@ -6,24 +6,22 @@ public class VaultManager (
 )
 {
 
-    public bool CreateVaultEntry (string credentialHash, RequestCreateVaultEntry request)
+    public bool CreateVaultEntry (string sessionCredential, RequestCreateVaultEntry request)
     {
         // Verify user access.
-        AuthenticatedUser? user = sessionManager.ValidateSession(credentialHash);
-        if (user == null)
+        AuthenticatedUser? userAuth = sessionManager.ValidateSession(sessionCredential);
+        if (userAuth == null)
         {
             logger.LogWarning("Invalid session credential. Will not create Vault entry! ");
             return false;
         }
 
-        logger.LogInformation ("Trying to create new Vault Entry for {ID} ", user.UserID);
+        logger.LogInformation ("Trying to create new Vault Entry for {ID} ", userAuth.UserID);
 
         // Required fields validieren
         if (string.IsNullOrWhiteSpace(request.Website)           ||
-            string.IsNullOrWhiteSpace(request.ExternalUsername)          ||
-            string.IsNullOrWhiteSpace(request.MasterPassword)    ||
-            string.IsNullOrWhiteSpace(request.GeneratedPassword) || 
-            (request.Salt == null))
+            string.IsNullOrWhiteSpace(request.ExternalUsername)  ||
+            string.IsNullOrWhiteSpace(request.GeneratedPassword)   )
         {
             logger.LogInformation("Required fields not filled out.");
             return false;
@@ -34,21 +32,23 @@ public class VaultManager (
         {
             CreatedAt = DateTime.UtcNow,
             Website = request.Website,
-            UserID = user.UserID
+            UserId = userAuth.UserID,
+            Title = request.Title,
+            UpdatedAt = DateTime.UtcNow
         };
 
-        // Generate Password for credential
-        string generatedPassword = cryptographer.GeneratePassword(32);
-
-        byte[]? salt = storageService.GetVaultSalt(user.UserID);
-        if(salt == null)
+        // Encrypt password using the VaultKey from the session context
+        SessionContext? context = sessionManager.GetSessionContext(sessionCredential);
+        if (context == null)
         {
-            logger.LogWarning("Unable to find Vaultsalt for {ID} ", user.UserID);
-            return false;    
+            logger.LogError("Unable to find Session Context for user: {user}", userAuth.UserID);
+            return false;
         }
 
-        byte[] key = cryptographer.Argon2idHash(request.MasterPassword, salt);
-        byte[]? encryptedPassword = cryptographer.EncryptMessage(generatedPassword, key);
+        byte[] vaultKey = context.VaultKey;
+
+
+        byte[]? encryptedPassword = cryptographer.EncryptMessage(request.GeneratedPassword, vaultKey);
         if (encryptedPassword == null)
         {
             logger.LogError("Encrypted Password was not created. ");
@@ -57,7 +57,7 @@ public class VaultManager (
 
         entry.EncryptedPassword = encryptedPassword;
 
-        byte[]? encryptedUsername = cryptographer.EncryptMessage(request.ExternalUsername, key);
+        byte[]? encryptedUsername = cryptographer.EncryptMessage(request.ExternalUsername, vaultKey);
         if (encryptedUsername == null)
         {
             logger.LogError("Encrypted Username was not created. ");

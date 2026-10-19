@@ -9,6 +9,7 @@ public class PasswordManagerDbContext : DbContext
 
     public DbSet<User> Users { get; set; }
     public DbSet<SessionCredential> Sessions { get; set; }
+    public DbSet<VaultEntry> VaultEntries { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,8 +21,11 @@ public class PasswordManagerDbContext : DbContext
             .IsUnique();
         
         modelBuilder.Entity<VaultEntry>()
+            .HasKey(v => v.EntryId);
+
+        modelBuilder.Entity<VaultEntry>()
             .HasOne(v => v.User)
             .WithMany(u => u.VaultEntries)
-            .HasForeignKey(v => v.UserID);
+            .HasForeignKey(v => v.UserId);
     }
 }

@@ -16,6 +16,7 @@ builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<StorageService>();
 builder.Services.AddScoped<Cryptographer>();
 builder.Services.AddScoped<SessionManager>();
+builder.Services.AddScoped<VaultManager>();
 
 var app = builder.Build();
 
@@ -28,5 +29,6 @@ app.MapGet("/api/test", () =>
 });
 
 app.MapAuthEndpoints();
+app.MapVaultEndpoints();
 
 app.Run();

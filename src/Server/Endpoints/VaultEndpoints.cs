@@ -1,12 +1,12 @@
 public static class VaultEndpoints
 {
-    public static void MapAuthEndpoints (this WebApplication app)
+    public static void MapVaultEndpoints (this WebApplication app)
     {
-        // Handles Users-Login requests and returns respective IResults
-        app.MapPost("/api/vault/login", (
+        app.MapPost("/api/vault", (
             RequestCreateVaultEntry request,
             VaultManager vaultManager,
             HttpRequest httpRequest,
+            HttpResponse response,
             ILoggerFactory loggerFactory) =>
         {
             ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.create");
@@ -18,15 +18,17 @@ public static class VaultEndpoints
                 return Results.Unauthorized();
             }
 
-            if (string.IsNullOrWhiteSpace(request.Title) ||
+            if (string.IsNullOrWhiteSpace(request.GeneratedPassword) ||
                 string.IsNullOrWhiteSpace(request.ExternalUsername) ||
-                string.IsNullOrWhiteSpace(request.MasterPassword))
+                string.IsNullOrWhiteSpace(request.Website))
             {
                 logger.LogWarning("Vault Entry contains empty required fields.");
                 return Results.BadRequest();
             }
 
             vaultManager.CreateVaultEntry(sessionCredential, request);
+
+            response.Cookies.Delete("session");
             return Results.Ok();
         });
     }

@@ -1,32 +1,197 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Manager</title>
+    <title>Password Manager - Test</title>
 
-    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 650px;
+            margin: 40px auto;
+            padding: 0 16px;
+            background: #f4f4f4;
+            color: #222;
+        }
+
+        section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        input, button {
+            display: block;
+            box-sizing: border-box;
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        #output {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            background: #222;
+            color: #b8ffb8;
+            padding: 15px;
+            border-radius: 8px;
+        }
+    </style>
 </head>
-<body>
 
+<body>
     <h1>Password Manager</h1>
 
-    <p>Frontend is running.</p>
+    <section>
+        <h2>Register</h2>
+        <form id="registerForm">
+            <input name="username" placeholder="Username" required>
+            <input name="password" type="password"
+                   placeholder="Master Password" required>
+            <input name="verifyPassword" type="password"
+                   placeholder="Repeat Master Password" required>
+            <button type="submit">Register</button>
+        </form>
+    </section>
 
-    <p id="api-status">Checking API...</p>
+    <section>
+        <h2>Login</h2>
+        <form id="loginForm">
+            <input name="username" placeholder="Username" required>
+            <input name="password" type="password"
+                   placeholder="Master Password" required>
+            <button type="submit">Login</button>
+        </form>
 
-    
+        <button id="checkSession">Check Session</button>
+        <button id="logout">Logout</button>
+    </section>
 
-    <form id="login-form">
-        <input id="username" type="text" required>
-        <input id="password" type="password" required>
+    <section>
+        <h2>Create Vault Entry</h2>
+        <form id="vaultForm">
+            <input name="title" placeholder="Title" required>
+            <input name="website" placeholder="Website" required>
+            <input name="externalUsername"
+                   placeholder="Website Username" required>
+            <input name="generatedPassword" type="password"
+                   placeholder="Website Password" required>
+            <button type="submit">Save Entry</button>
+        </form>
+    </section>
 
-        <button type="submit">Login</button>
+    <h2>API Response</h2>
+    <pre id="output">Ready.</pre>
 
-        <p id="login-message"></p>
-    </form>
+    <script>
+        // Change these paths if your endpoint routes differ.
+        const API = {
+            register: "/api/auth/register",
+            login: "/api/auth/login",
+            me: "/api/auth/me",
+            logout: "/api/auth/logout",
+            createVaultEntry: "/api/vault"
+        };
 
-    <script src="/js/app.js"></script>
+        const output = document.getElementById("output");
 
+        // Send JSON requests and display the server response.
+        async function apiRequest(url, method, data = undefined) {
+            try {
+                const options = {
+                    method,
+                    credentials: "same-origin",
+                    headers: {}
+                };
+
+                if (data !== undefined) {
+                    options.headers["Content-Type"] = "application/json";
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(url, options);
+                const text = await response.text();
+
+                output.textContent =
+                    `${method} ${url}\n` +
+                    `Status: ${response.status} ${response.statusText}\n\n` +
+                    (text || "(empty response)");
+
+                return response.ok;
+            } catch (error) {
+                output.textContent = `Request failed: ${error.message}`;
+                return false;
+            }
+        }
+
+        // Register a new account.
+        document.getElementById("registerForm")
+            .addEventListener("submit", async event => {
+                event.preventDefault();
+
+                const form = new FormData(event.target);
+
+                await apiRequest(API.register, "POST", {
+                    username: form.get("username"),
+                    password: form.get("password"),
+                    verifyPassword: form.get("verifyPassword")
+                });
+            });
+
+        // Log in and let the browser receive the session cookie.
+        document.getElementById("loginForm")
+            .addEventListener("submit", async event => {
+                event.preventDefault();
+
+                const form = new FormData(event.target);
+
+                await apiRequest(API.login, "POST", {
+                    username: form.get("username"),
+                    password: form.get("password")
+                });
+            });
+
+        // Check whether the server accepts the current session.
+        document.getElementById("checkSession")
+            .addEventListener("click", async () => {
+                await apiRequest(API.me, "GET");
+            });
+
+        // Revoke the current session.
+        document.getElementById("logout")
+            .addEventListener("click", async () => {
+                await apiRequest(API.logout, "POST");
+            });
+
+        // Submit a vault entry; the master password is NOT sent.
+        document.getElementById("vaultForm")
+            .addEventListener("submit", async event => {
+                event.preventDefault();
+
+                const form = new FormData(event.target);
+
+                const success = await apiRequest(
+                    API.createVaultEntry,
+                    "POST",
+                    {
+                        title: form.get("title"),
+                        website: form.get("website"),
+                        externalUsername: form.get("externalUsername"),
+                        generatedPassword: form.get("generatedPassword")
+                    }
+                );
+
+                if (success) {
+                    event.target.reset();
+                }
+            });
+    </script>
 </body>
 </html>

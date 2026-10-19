@@ -6,6 +6,7 @@ using System.Buffers;
 using System.Data.Common;
 using Microsoft.OpenApi;
 using System.Text;
+using System.Security.Cryptography;
 
 public static class AuthEndpoints
 {
@@ -79,13 +80,16 @@ public static class AuthEndpoints
             }
             ResultPasswordVerifier result = cryptographer.CreateArgon2idVerifier(request.Password);
 
+            byte[] vaultSalt = RandomNumberGenerator.GetBytes(16);
+
             // create user for database
             User databaseEntry = new User
             {
                 // UserID - left blank gets auto gened.
                 PasswordVerifier = result.PasswordVerifier,
                 Username = request.Username,
-                PasswordSalt = result.Salt
+                PasswordSalt = result.Salt,
+                VaultSalt = vaultSalt
             };
 
             if (!storageService.CreateUser(databaseEntry))

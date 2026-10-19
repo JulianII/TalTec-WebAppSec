@@ -4,6 +4,8 @@ public class SessionManager (
         ILogger<SessionManager> logger
     )
 {
+    private readonly Dictionary<string, SessionContext> sessionContexts = new();
+
     private const int SessionExpiryTimeMinutes = 5;
 
     public ResultSession? CreateSession (AuthenticatedUser user)
@@ -68,5 +70,29 @@ public class SessionManager (
     {
         if(credential == null) return false;
         return storage.SetRevokeSessionFlag(cryptographer.HashSessionCredential(credential));
+    }
+
+    public bool CreateSessionContext (SessionCredential session, User user, string password)
+    {
+        SessionContext context = new SessionContext
+        {
+            AuthLevel = session.AuthLevel,
+            CredentialHash = session.CredentialHash,
+            UserID = session.UserID
+        };
+
+        // Create Vaultkey
+        context.VaultKey = cryptographer.Argon2idHash(password, user.VaultSalt);
+        sessionContexts.Add(context.CredentialHash, context);
+
+        return true;
+    }
+
+    internal SessionContext GetSessionContext (string credentialHash)
+    {
+        SessionContext? context;
+        sessionContexts.TryGetValue(credentialHash, out context);
+
+        return context;
     }
 }

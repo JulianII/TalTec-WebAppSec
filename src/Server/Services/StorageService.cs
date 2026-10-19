@@ -5,7 +5,20 @@ public class StorageService (PasswordManagerDbContext db,
 {
     public bool CreateVaultEntry(VaultEntry entry)
     {
-        return true;
+        try
+    {
+        db.VaultEntries.Add(entry); 
+        db.SaveChanges();
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Failed to create VaultEntry for UserID: {UserId}", entry.UserId);
+    return false;
+    }
+
+    logger.LogInformation("VaultEntry created for UserID: {UserId}", entry.UserId);
+    // Log successful creation without logging credentials
+    return true;
     }
 
     public User? GetUser (string username)
@@ -21,6 +34,23 @@ public class StorageService (PasswordManagerDbContext db,
         }
 
         if (user == null) logger.LogInformation("Unable to find username: {username}", username);
+
+        return user;
+    }
+
+    public User? GetUser (int userID)
+    {
+        User? user;
+
+        // Get user from DB by username
+        try { user = db.Users.SingleOrDefault(a => a.UserID == userID); }
+        catch (System.InvalidOperationException)
+        {
+            logger.LogError("Multiple entries found for UserID: {iD}", userID);
+            throw;
+        }
+
+        if (user == null) logger.LogInformation("Unable to find UserID: {ID}", userID);
 
         return user;
     }
@@ -80,7 +110,7 @@ public class StorageService (PasswordManagerDbContext db,
         try { credential = db.Sessions.SingleOrDefault(a => a.CredentialHash == credentialHash); }
         catch (System.InvalidOperationException)
         {
-            logger.LogError("Can't get session: Too many sessions for single hash: {hash}", credentialHash);
+            logger.LogError("Can't get session: Too many sessions for single hash");
             throw;
         }
 
