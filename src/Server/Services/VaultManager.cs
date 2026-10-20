@@ -6,8 +6,10 @@ public class VaultManager (
 )
 {
 
-    public bool CreateVaultEntry (string sessionCredential,AuthenticatedUser userAuth, RequestCreateVaultEntry request)
+    public bool CreateVaultEntry (string sessionCredential, AuthenticatedUser userAuth, RequestCreateVaultEntry request)
     {
+        if(!CheckAuthenticationLevel(userAuth, AuthenticationLevel.Reduced)) return false;
+
         logger.LogInformation ("Trying to create new Vault Entry for {ID} ", userAuth.UserID);
 
         // VaultEntry creation
@@ -59,13 +61,57 @@ public class VaultManager (
         return true;
     }
 
-    public bool EditVaultEntry ()
+    public VaultEntryUnencrypted? GetVaultEntry (int entryId, AuthenticatedUser user, SessionContext context)
     {
+        if(!CheckAuthenticationLevel(user, AuthenticationLevel.Full)) return null;
+
+        VaultEntryUnencrypted entryUnencrypted = new VaultEntryUnencrypted();
+
+        // Get whole Vault Entry
+        VaultEntry? entry = storageService.GetVaultEntry(entryId);
+        if(entry == null)return null;
+
+        string? plainPassword = cryptographer.Decrypt(entry.EncryptedUsername, context.VaultKey);
+        if (String.IsNullOrEmpty(plainPassword))
+        {
+            logger.LogError("Unable to decrypt Password for UserID: {user} EntryID:{entry}", user.UserID, entryId);    
+            return null;
+        }
+        entryUnencrypted.Password = plainPassword;
+
+        string? plainUsername = cryptographer.Decrypt(entry.EncryptedUsername, context.VaultKey);
+        if (String.IsNullOrEmpty(plainUsername))
+        {
+            logger.LogError("Unable to decrypt Username for UserID: {user} EntryID:{entry}", user.UserID, entryId);    
+            return null;
+        }
+        entryUnencrypted.Username = plainUsername;
+
+        return entryUnencrypted;
+    }
+
+    public bool EditVaultEntry (AuthenticatedUser user, VaultEntryUpdate entryUpdate, int entryId)
+    {
+        if(!CheckAuthenticationLevel(user, AuthenticationLevel.Full)) return false;
+
+        storageService.UpdateVaultEntry(entryUpdate, entryId);
+
         return true;
     }
 
-    public bool DeleteVaulEntry ()
+    public bool DeleteVaulEntry (AuthenticatedUser user, int entryId)
     {
+        if(!CheckAuthenticationLevel(user, AuthenticationLevel.Full)) return false;
+        storageService.DeleteVaultEntry(entryId);
+
         return true;
     }    
+
+    private bool CheckAuthenticationLevel (AuthenticatedUser user, AuthenticationLevel requiredLevel)
+    {
+        if(user.AuthenticationLevel == requiredLevel) return true;
+
+        logger.LogWarning("Authentication level is insufficient. ");
+        return false;
+    }
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Server.Data;
 
 public class StorageService (PasswordManagerDbContext db,
@@ -141,5 +142,61 @@ public class StorageService (PasswordManagerDbContext db,
         logger.LogInformation("Session revoked for: {id} at {time}", session.UserID, DateTime.UtcNow);
 
         return true;
+    }
+
+    public VaultEntry? GetVaultEntry (int entryId)
+    {
+        VaultEntry? entry = db.VaultEntries.SingleOrDefault(a => a.EntryId == entryId);
+        if(entry == null) logger.LogError("Unable to retrieve EntryID: {ID}", entryId);
+
+        return entry;
+    }
+
+    // TODO extensive logging.
+    public bool UpdateVaultEntry (VaultEntryUpdate entryUpdate, int entryId)
+    {
+        VaultEntry? entry;
+
+        // Get user from DB by username
+        try { entry = db.VaultEntries.SingleOrDefault(a => a.EntryId == entryId); }
+        catch (System.InvalidOperationException)
+        {
+            logger.LogError("Cant find entry: Too many entires for single ID: {ID}", entryId);
+            throw;
+        }
+        if (entry == null) 
+        {
+            logger.LogInformation("Cant find entry: No entry found for ID: {ID}", entryId);
+            return false;
+        }
+
+        entry.Title = entryUpdate.Title;
+        entry.Website = entryUpdate.Website;
+        entry.EncryptedPassword = entryUpdate.EncryptedPassword;
+        entry.EncryptedUsername = entryUpdate.EncryptedUsername;
+        entry.UpdatedAt = DateTime.UtcNow;
+
+        db.SaveChanges();
+        logger.LogInformation("EntryID {entry} Updated forUser: {id} at {time}", entryId, entry.EntryId, DateTime.UtcNow);
+
+        return true;
+    }
+
+    public bool DeleteVaultEntry(int entryId)
+    {
+        try
+        {
+            VaultEntry? entry = db.VaultEntries.SingleOrDefault(e => e.EntryId == entryId);
+            if (entry == null) return false;
+
+            db.VaultEntries.Remove(entry);
+            db.SaveChanges();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to delete vault entry {ID}", entryId);
+            return false;
+        }
     }
 }

@@ -5,7 +5,7 @@
  * By keeping the VaultKey separate from the database entities, we ensure
  * that the VaultKey is not permanently stored in the database.
  */
-class SessionContext
+public class SessionContext
 {
     public string CredentialHash         { get; set; } // Hash of the session token, used to identify the session
     public int UserID                    { get; set; } // Unique user identifier

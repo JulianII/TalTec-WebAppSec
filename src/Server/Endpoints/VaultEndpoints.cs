@@ -23,7 +23,7 @@ public static class VaultEndpoints
                 string.IsNullOrWhiteSpace(request.ExternalUsername) ||
                 string.IsNullOrWhiteSpace(request.Website))
             {
-                logger.LogWarning("Vault Entry contains empty required fields.");
+                logger.LogWarning("Vault Entry request contains empty required fields.");
                 return Results.BadRequest();
             }
 
@@ -36,6 +36,33 @@ public static class VaultEndpoints
             }
 
             vaultManager.CreateVaultEntry(sessionCredential, userAuth, request);
+            return Results.Ok();
+        });
+
+        app.MapGet("/api/vault", (
+            SessionManager sessionManager,
+            VaultManager vaultManager,
+            HttpRequest httpRequest,
+            HttpResponse response,
+            ILoggerFactory loggerFactory) =>
+        {
+            ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.get");
+
+            string? sessionCredential = httpRequest.Cookies["session"];
+            if (sessionCredential == null)
+            {
+                logger.LogWarning("Missing Session ");
+                return Results.Unauthorized();
+            }
+
+            // Verify user access.
+            AuthenticatedUser? userAuth = sessionManager.ValidateSession(sessionCredential);
+            if (userAuth == null)
+            {
+                logger.LogWarning("Invalid session credential. Will not create Vault entry! ");
+                return Results.Unauthorized();
+            }
+
             return Results.Ok();
         });
     }
