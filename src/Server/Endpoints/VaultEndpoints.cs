@@ -4,6 +4,7 @@ public static class VaultEndpoints
     {
         app.MapPost("/api/vault", (
             RequestCreateVaultEntry request,
+            SessionManager sessionManager,
             VaultManager vaultManager,
             HttpRequest httpRequest,
             HttpResponse response,
@@ -26,9 +27,15 @@ public static class VaultEndpoints
                 return Results.BadRequest();
             }
 
-            vaultManager.CreateVaultEntry(sessionCredential, request);
+            // Verify user access.
+            AuthenticatedUser? userAuth = sessionManager.ValidateSession(sessionCredential);
+            if (userAuth == null)
+            {
+                logger.LogWarning("Invalid session credential. Will not create Vault entry! ");
+                return Results.Unauthorized();
+            }
 
-            response.Cookies.Delete("session");
+            vaultManager.CreateVaultEntry(sessionCredential, userAuth, request);
             return Results.Ok();
         });
     }

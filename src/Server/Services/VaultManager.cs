@@ -6,26 +6,9 @@ public class VaultManager (
 )
 {
 
-    public bool CreateVaultEntry (string sessionCredential, RequestCreateVaultEntry request)
+    public bool CreateVaultEntry (string sessionCredential,AuthenticatedUser userAuth, RequestCreateVaultEntry request)
     {
-        // Verify user access.
-        AuthenticatedUser? userAuth = sessionManager.ValidateSession(sessionCredential);
-        if (userAuth == null)
-        {
-            logger.LogWarning("Invalid session credential. Will not create Vault entry! ");
-            return false;
-        }
-
         logger.LogInformation ("Trying to create new Vault Entry for {ID} ", userAuth.UserID);
-
-        // Required fields validieren
-        if (string.IsNullOrWhiteSpace(request.Website)           ||
-            string.IsNullOrWhiteSpace(request.ExternalUsername)  ||
-            string.IsNullOrWhiteSpace(request.GeneratedPassword)   )
-        {
-            logger.LogInformation("Required fields not filled out.");
-            return false;
-        }
 
         // VaultEntry creation
         VaultEntry entry = new VaultEntry()
