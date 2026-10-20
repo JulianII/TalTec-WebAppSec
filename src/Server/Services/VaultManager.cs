@@ -69,7 +69,13 @@ public class VaultManager (
 
         // Get whole Vault Entry
         VaultEntry? entry = storageService.GetVaultEntry(entryId);
-        if(entry == null)return null;
+        if(entry == null)
+        {
+            logger.LogError("Failed to get vault entry. Entry doesn't exist. Entry ID {ID}", entryId);
+            return null;
+        }
+
+        if(CheckUserIDs(entryId, user.UserID)) return null;
 
         string? plainPassword = cryptographer.Decrypt(entry.EncryptedUsername, context.VaultKey);
         if (String.IsNullOrEmpty(plainPassword))
@@ -93,16 +99,31 @@ public class VaultManager (
     public bool EditVaultEntry (AuthenticatedUser user, VaultEntryUpdate entryUpdate, int entryId)
     {
         if(!CheckAuthenticationLevel(user, AuthenticationLevel.Full)) return false;
+        if(!CheckUserIDs(entryId, user.UserID)) return false;
+
+        VaultEntry? entry = storageService.GetVaultEntry(entryId);
+        if (entry == null)
+        {
+            logger.LogError("Failed to edit vault entry. Entry doesn't exist. Entry ID {ID}", entryId);
+            return false;
+        }
 
         storageService.UpdateVaultEntry(entryUpdate, entryId);
 
+        logger.LogInformation("Vault Entry {entry} Updated by: {user}", entryId, user.UserID);
         return true;
     }
 
     public bool DeleteVaulEntry (AuthenticatedUser user, int entryId)
     {
         if(!CheckAuthenticationLevel(user, AuthenticationLevel.Full)) return false;
-        storageService.DeleteVaultEntry(entryId);
+        if(!CheckUserIDs(entryId, user.UserID)) return false;
+
+        if (storageService.DeleteVaultEntry(entryId))
+        {
+            logger.LogError("Failed to delete entry: {entry}", entryId);
+            return false;
+        }
 
         return true;
     }    
@@ -113,5 +134,14 @@ public class VaultManager (
 
         logger.LogWarning("Authentication level is insufficient. ");
         return false;
+    }
+
+    private bool CheckUserIDs(int entryId, int userId)
+    {
+        if(entryId == userId) return true;
+        
+        logger.LogWarning("UserIDs don't match! ID: {id} tried. ", userId);
+        return false;
+        
     }
 }

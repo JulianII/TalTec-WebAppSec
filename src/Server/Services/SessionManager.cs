@@ -68,8 +68,13 @@ public class SessionManager (
         return result;
     }
 
-    public AuthenticatedUser? ValidateSession (string credential)
+    public AuthenticatedUser? ValidateSession (string? credential)
     {
+        if(String.IsNullOrEmpty(credential))
+        {
+            logger.LogError("Won't validate Session. Session credential is missing.");
+            return null;
+        }
         // Transform raw credential
         String hash = cryptographer.HashSessionCredential(credential);
 

@@ -12,13 +12,6 @@ public static class VaultEndpoints
         {
             ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.create");
 
-            string? sessionCredential = httpRequest.Cookies["session"];
-            if (sessionCredential == null)
-            {
-                logger.LogWarning("Missing Session for {username} ", request.ExternalUsername);
-                return Results.Unauthorized();
-            }
-
             if (string.IsNullOrWhiteSpace(request.GeneratedPassword) ||
                 string.IsNullOrWhiteSpace(request.ExternalUsername) ||
                 string.IsNullOrWhiteSpace(request.Website))
@@ -27,19 +20,23 @@ public static class VaultEndpoints
                 return Results.BadRequest();
             }
 
+            string? credentialHash = httpRequest.Cookies["session"];
+
             // Verify user access.
-            AuthenticatedUser? userAuth = sessionManager.ValidateSession(sessionCredential);
+            AuthenticatedUser? userAuth = sessionManager.ValidateSession(credentialHash);
             if (userAuth == null)
             {
                 logger.LogWarning("Invalid session credential. Will not create Vault entry! ");
                 return Results.Unauthorized();
             }
 
-            vaultManager.CreateVaultEntry(sessionCredential, userAuth, request);
+            // If CredentialHash is Null, it gets caught inside ValidateSession().
+            vaultManager.CreateVaultEntry(credentialHash, userAuth, request);
             return Results.Ok();
         });
 
-        app.MapGet("/api/vault", (
+        app.MapGet("/api/vault/{ID}", (
+            int id,
             SessionManager sessionManager,
             VaultManager vaultManager,
             HttpRequest httpRequest,
@@ -48,19 +45,40 @@ public static class VaultEndpoints
         {
             ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.get");
 
-            string? sessionCredential = httpRequest.Cookies["session"];
-            if (sessionCredential == null)
+            // Verify user access.
+            AuthenticatedUser? userAuth = sessionManager.ValidateSession(httpRequest.Cookies["session"]);
+            if (userAuth == null)
             {
-                logger.LogWarning("Missing Session ");
+                logger.LogWarning("Invalid session credential. Will not get Vault entry! ");
                 return Results.Unauthorized();
             }
 
+            return Results.Ok();
+        });
+
+        app.MapPut("/api/vault/{id}", (
+            int id,
+            VaultEntryUpdate update,
+            SessionManager sessionManager,
+            VaultManager vaultManager,
+            HttpRequest httpRequest,
+            HttpResponse response,
+            ILoggerFactory loggerFactory) =>
+        {
+            ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.put");
+
             // Verify user access.
-            AuthenticatedUser? userAuth = sessionManager.ValidateSession(sessionCredential);
+            AuthenticatedUser? userAuth = sessionManager.ValidateSession(httpRequest.Cookies["session"]);
             if (userAuth == null)
             {
-                logger.LogWarning("Invalid session credential. Will not create Vault entry! ");
+                logger.LogWarning("Invalid session credential. Will not edit Vault entry! ");
                 return Results.Unauthorized();
+            }
+
+            if(vaultManager.EditVaultEntry(userAuth, update, id))
+            {
+                logger.LogError("Failed to Edit Fault.");
+                return Results.BadRequest();
             }
 
             return Results.Ok();
