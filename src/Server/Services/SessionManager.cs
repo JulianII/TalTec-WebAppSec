@@ -1,14 +1,16 @@
+using System.Collections.Concurrent;
+
 public class SessionManager (
         StorageService storage,
         Cryptographer cryptographer,
         ILogger<SessionManager> logger
     )
 {
-    private readonly Dictionary<string, SessionContext> sessionContexts = new();
+    private readonly ConcurrentDictionary<string, SessionContext> sessionContexts = new();
 
     private const int SessionExpiryTimeMinutes = 5;
 
-    public ResultSession? CreateSession (AuthenticatedUser user)
+    public ResultSession? CreateSession (AuthenticatedUser authenticatedUser, string masterPassword)
     {
         DateTime currentTime = DateTime.UtcNow;
         DateTime expiry = currentTime.AddMinutes(SessionExpiryTimeMinutes);
@@ -19,8 +21,8 @@ public class SessionManager (
         SessionCredential session = new()
         {
             CredentialHash = cryptographer.HashSessionCredential(credential),
-            UserID = user.UserID,
-            AuthLevel = user.AuthenticationLevel,
+            UserID = authenticatedUser.UserID,
+            AuthLevel = authenticatedUser.AuthenticationLevel,
             CreatedAt = currentTime,
             ExpiresAt = expiry,
             Revoked = false
@@ -36,6 +38,33 @@ public class SessionManager (
             ExpiresAt = expiry
         };
 
+        // get VaultSalt
+        byte[]? vaultSalt = storage.GetVaultSalt(authenticatedUser.UserID);
+        if(vaultSalt == null) 
+        {
+            logger.LogError("Unable to find VaultSalt for ID: {ID}", authenticatedUser.UserID);
+            return null;
+        }
+
+        // Create SessionContext
+        SessionContext context = new()
+        {
+            AuthLevel = session.AuthLevel,
+            UserID = session.UserID,
+            CredentialHash = session.CredentialHash,
+            VaultKey = cryptographer.Argon2idHash(masterPassword, vaultSalt)
+        };
+
+        // Add context to dictionary ( only im RAM )
+        if (!sessionContexts.TryAdd(session.CredentialHash, context))
+        {
+            logger.LogWarning("Duplicate session context");
+            storage.SetRevokeSessionFlag(session.CredentialHash);
+            return null;
+        }
+
+        logger.LogInformation("SessionContext created for ID: {ID}", authenticatedUser.UserID);
+
         return result;
     }
 
@@ -48,7 +77,7 @@ public class SessionManager (
         SessionCredential? activeSession = storage.GetSessionCredentialByCredentialHash (hash);
         if (activeSession == null) 
         { 
-            logger.LogWarning("No current active session for");
+            logger.LogWarning("Session validation failed for UserID: {UserID}", activeSession?.UserID);
             return null; 
         }
 
@@ -68,31 +97,23 @@ public class SessionManager (
 
     public bool RevokeSession (string? credential)
     {
-        if(credential == null) return false;
-        return storage.SetRevokeSessionFlag(cryptographer.HashSessionCredential(credential));
+        if(string.IsNullOrEmpty(credential)) return false;
+
+        string hash = cryptographer.HashSessionCredential(credential);
+
+        // Try to remove from memory
+        sessionContexts.TryRemove(hash, out _);
+
+        // Revoke in database
+        return storage.SetRevokeSessionFlag(hash);
     }
 
-    public bool CreateSessionContext (SessionCredential session, User user, string password)
+    internal SessionContext? GetSessionContext(string credential)
     {
-        SessionContext context = new SessionContext
-        {
-            AuthLevel = session.AuthLevel,
-            CredentialHash = session.CredentialHash,
-            UserID = session.UserID
-        };
-
-        // Create Vaultkey
-        context.VaultKey = cryptographer.Argon2idHash(password, user.VaultSalt);
-        sessionContexts.Add(context.CredentialHash, context);
-
-        return true;
-    }
-
-    internal SessionContext GetSessionContext (string credentialHash)
-    {
-        SessionContext? context;
-        sessionContexts.TryGetValue(credentialHash, out context);
-
+        // Hash the credential the same way it was stored
+        string hash = cryptographer.HashSessionCredential(credential);
+        sessionContexts.TryGetValue(hash, out var context);
         return context;
     }
+
 }

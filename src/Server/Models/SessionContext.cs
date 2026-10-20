@@ -10,5 +10,5 @@ class SessionContext
     public string CredentialHash         { get; set; } // Hash of the session token, used to identify the session
     public int UserID                    { get; set; } // Unique user identifier
     public AuthenticationLevel AuthLevel { get; set; } // Authentication level of the session
-    public byte[] VaultKey                { get; set; } // Key used to encrypt and decrypt vault data
+    public byte[] VaultKey               { get; set; } // Key used to encrypt and decrypt vault data
 }

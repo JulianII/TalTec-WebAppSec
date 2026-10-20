@@ -17,6 +17,7 @@ builder.Services.AddScoped<StorageService>();
 builder.Services.AddScoped<Cryptographer>();
 builder.Services.AddScoped<SessionManager>();
 builder.Services.AddScoped<VaultManager>();
+builder.Services.AddSingleton<SessionManager>();
 
 var app = builder.Build();
 

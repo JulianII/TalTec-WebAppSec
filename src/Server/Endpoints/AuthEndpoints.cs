@@ -31,7 +31,7 @@ public static class AuthEndpoints
             }
 
             // Create a session for the requested user and check validity
-            ResultSession? session = sessionManager.CreateSession(user);
+            ResultSession? session = sessionManager.CreateSession(user, request.Password);
             if (session == null)
             {
                 logger.LogWarning("Failed to create session for user: {username} at {time}", request.Username, DateTime.UtcNow);
@@ -100,19 +100,19 @@ public static class AuthEndpoints
 
             // TODO: Avoid recalculating Argon2id during auto-login after registration; reuse the authenticated user directly.
             // Create authenticatedUser for created User
-            AuthenticatedUser? user = authenticationService.Login(new RequestLogin
+            AuthenticatedUser? authenticated = authenticationService.Login(new RequestLogin
             {
                 Password = request.Password,
                 Username = request.Username   
             });
-            if (user == null)
+            if (authenticated == null)
             {
                 logger.LogError("Failed to authenticate just created user: {username}", request.Username);
                 return Results.Problem();
             }
 
             // Create Session for created user
-            ResultSession? session = sessionManager.CreateSession(user);
+            ResultSession? session = sessionManager.CreateSession(authenticated, request.Password);
             if (session == null)
             {
                 logger.LogWarning("Failed to create session for user: {username} at {time}", request.Username, DateTime.UtcNow);
@@ -120,7 +120,7 @@ public static class AuthEndpoints
             }
 
             // Validate the created session and check that it belongs to the authenticated user
-            if(sessionManager.ValidateSession(session.Credential)?.UserID != user.UserID)
+            if(sessionManager.ValidateSession(session.Credential)?.UserID != authenticated.UserID)
             {
                 logger.LogWarning("Failed to validate session for user: {username} at {time}", request.Username, DateTime.UtcNow);
                 return Results.Problem();
