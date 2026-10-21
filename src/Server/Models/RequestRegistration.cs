@@ -3,7 +3,7 @@
   * Used to create a new user.
   */
 
-class RequestRegistration
+public class RequestRegistration
 {
     public string Username { get; set; }        // Identifies the user's account
     public string Password { get; set; }        // Password used to authenticate the user's account

@@ -115,7 +115,7 @@ public static class VaultEndpoints
 
             if(!vaultManager.DeleteVaultEntry(userAuth, id))
             {
-                logger.LogError("Failed to delete Fault.");
+                logger.LogError("Failed to delete vault.");
                 return Results.BadRequest();
             }
 

@@ -23,7 +23,7 @@ public static class AuthEndpoints
             ILogger logger = loggerFactory.CreateLogger("AuthEndpoints.Login");
 
             // Create user objekt and check success
-            AuthenticatedUser? user = authenticationService.Login(request);
+            AuthenticatedUser? user = authenticationService.LoginUser(request);
             if (user == null)
             {
                 logger.LogWarning("Failed login for user: {username} at {time}", request.Username, DateTime.UtcNow);
@@ -78,38 +78,9 @@ public static class AuthEndpoints
                 logger.LogInformation("Registration failed password consistency. ");
                 return Results.BadRequest("Passwords differ");
             }
-            ResultPasswordVerifier result = cryptographer.CreateArgon2idVerifier(request.Password);
 
-            byte[] vaultSalt = RandomNumberGenerator.GetBytes(16);
-
-            // create user for database
-            User databaseEntry = new User
-            {
-                // UserID - left blank gets auto gened.
-                PasswordVerifier = result.PasswordVerifier,
-                Username = request.Username,
-                PasswordSalt = result.Salt,
-                VaultSalt = vaultSalt
-            };
-
-            if (!storageService.CreateUser(databaseEntry))
-            {
-                logger.LogWarning("Database failed to create user: {username}", request.Username);
-                return Results.Problem();
-            }
-
-            // TODO: Avoid recalculating Argon2id during auto-login after registration; reuse the authenticated user directly.
-            // Create authenticatedUser for created User
-            AuthenticatedUser? authenticated = authenticationService.Login(new RequestLogin
-            {
-                Password = request.Password,
-                Username = request.Username   
-            });
-            if (authenticated == null)
-            {
-                logger.LogError("Failed to authenticate just created user: {username}", request.Username);
-                return Results.Problem();
-            }
+            AuthenticatedUser? authenticated = authenticationService.RegisterUser(request);
+            if(authenticated == null) return Results.Unauthorized();
 
             // Create Session for created user
             ResultSession? session = sessionManager.CreateSession(authenticated, request.Password);
