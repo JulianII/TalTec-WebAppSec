@@ -150,8 +150,6 @@ public static class AuthEndpoints
             // Get credential from cookie
             string? cookieCredential = request.Cookies["session"];
 
-            // No need to validate session. If the user doesnt have a session we can keep it idempotent this way.
-
             // revoke session
             if (!sessionManager.RevokeSession(cookieCredential))
             {
