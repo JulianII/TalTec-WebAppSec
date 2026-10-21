@@ -77,7 +77,7 @@ public class VaultManager (
 
         if(CheckUserIDs(entryId, user.UserID)) return null;
 
-        string? plainPassword = cryptographer.Decrypt(entry.EncryptedUsername, context.VaultKey);
+        string? plainPassword = cryptographer.Decrypt(entry.EncryptedPassword, context.VaultKey);
         if (String.IsNullOrEmpty(plainPassword))
         {
             logger.LogError("Unable to decrypt Password for UserID: {user} EntryID:{entry}", user.UserID, entryId);    
@@ -114,12 +114,14 @@ public class VaultManager (
         return true;
     }
 
-    public bool DeleteVaulEntry (AuthenticatedUser user, int entryId)
+    public bool DeleteVaultEntry (AuthenticatedUser user, int entryId)
     {
         if(!CheckAuthenticationLevel(user, AuthenticationLevel.Full)) return false;
-        if(!CheckUserIDs(entryId, user.UserID)) return false;
 
-        if (storageService.DeleteVaultEntry(entryId))
+        VaultEntry entry = storageService.GetVaultEntry(entryId);
+        if(!CheckUserIDs(entry.UserId, user.UserID)) return false;
+
+        if (!storageService.DeleteVaultEntry(entryId))
         {
             logger.LogError("Failed to delete entry: {entry}", entryId);
             return false;
@@ -136,9 +138,9 @@ public class VaultManager (
         return false;
     }
 
-    private bool CheckUserIDs(int entryId, int userId)
+    private bool CheckUserIDs(int entryUserId, int userId)
     {
-        if(entryId == userId) return true;
+        if(entryUserId == userId) return true;
         
         logger.LogWarning("UserIDs don't match! ID: {id} tried. ", userId);
         return false;

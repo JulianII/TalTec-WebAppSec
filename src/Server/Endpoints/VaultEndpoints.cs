@@ -7,7 +7,6 @@ public static class VaultEndpoints
             SessionManager sessionManager,
             VaultManager vaultManager,
             HttpRequest httpRequest,
-            HttpResponse response,
             ILoggerFactory loggerFactory) =>
         {
             ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.create");
@@ -30,7 +29,7 @@ public static class VaultEndpoints
                 return Results.Unauthorized();
             }
 
-            // If CredentialHash is Null, it gets caught inside ValidateSession().
+            // If CredentialHash is Null, it gets caught inside ValidateSession() above.
             vaultManager.CreateVaultEntry(credentialHash, userAuth, request);
             return Results.Ok();
         });
@@ -53,7 +52,21 @@ public static class VaultEndpoints
                 return Results.Unauthorized();
             }
 
-            return Results.Ok();
+            SessionContext? context = sessionManager.GetSessionContext(httpRequest.Cookies["session"]);
+            if (context == null)
+            {
+                logger.LogWarning("Couldn't retrieve Session Context. Will not get Vault entry! ");
+                return Results.Unauthorized();
+            }
+
+            VaultEntryUnencrypted? entryUnencrypted = vaultManager.GetVaultEntry(id, userAuth, context);
+            if(entryUnencrypted == null)
+            {
+                logger.LogWarning("Couldn't retrieve vault-entry. Will not get Vault entry! ");
+                return Results.Unauthorized();
+            }
+
+            return Results.Ok(new { message = entryUnencrypted });
         });
 
         app.MapPut("/api/vault/{id}", (
@@ -62,7 +75,6 @@ public static class VaultEndpoints
             SessionManager sessionManager,
             VaultManager vaultManager,
             HttpRequest httpRequest,
-            HttpResponse response,
             ILoggerFactory loggerFactory) =>
         {
             ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.put");
@@ -75,9 +87,35 @@ public static class VaultEndpoints
                 return Results.Unauthorized();
             }
 
-            if(vaultManager.EditVaultEntry(userAuth, update, id))
+            if(!vaultManager.EditVaultEntry(userAuth, update, id))
             {
                 logger.LogError("Failed to Edit Fault.");
+                return Results.BadRequest();
+            }
+
+            return Results.Ok();
+        });
+
+        app.MapDelete("/api/vault/{id}", (
+            int id,
+            SessionManager sessionManager,
+            VaultManager vaultManager,
+            HttpRequest httpRequest,
+            ILoggerFactory loggerFactory) =>
+        {
+            ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.delete");
+
+            // Verify user access.
+            AuthenticatedUser? userAuth = sessionManager.ValidateSession(httpRequest.Cookies["session"]);
+            if (userAuth == null)
+            {
+                logger.LogWarning("Invalid session credential. Will not edit Vault entry! ");
+                return Results.Unauthorized();
+            }
+
+            if(!vaultManager.DeleteVaultEntry(userAuth, id))
+            {
+                logger.LogError("Failed to delete Fault.");
                 return Results.BadRequest();
             }
 

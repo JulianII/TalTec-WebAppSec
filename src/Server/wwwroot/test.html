@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Manager - CRUD Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 16px;
+            background: #f4f4f4;
+            color: #222;
+        }
+        
+        section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
+        input, button, select, textarea {
+            display: block;
+            box-sizing: border-box;
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        #output {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            background: #222;
+            color: #b8ffb8;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .entry-card {
+            background: #fff;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .entry-card h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Password Manager - CRUD Test</h1>
+    <p>Test the current vault entry implementation. <a href="/">Back to main page</a></p>
+
+    <section>
+        <h2>Session Status</h2>
+        <button id="checkSession">Check Current Session</button>
+        <button id="logout">Logout</button>
+        <pre id="output">Ready.</pre>
+    </section>
+
+    <section>
+        <h2>Create Vault Entry</h2>
+        <form id="createForm">
+            <input name="title" placeholder="Title" required>
+            <input name="website" placeholder="Website" required>
+            <input name="externalUsername" placeholder="Website Username" required>
+            <input name="generatedPassword" type="password" placeholder="Website Password" required>
+            <button type="submit">Create Entry</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Retrieve Vault Entry</h2>
+        <form id="retrieveForm">
+            <input name="entryId" type="number" placeholder="Entry ID" required>
+            <button type="submit">Retrieve Entry</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Update Vault Entry</h2>
+        <form id="updateForm">
+            <input name="title" placeholder="New Title">
+            <input name="website" placeholder="New Website">
+            <input name="externalUsername" placeholder="New Username">
+            <input name="generatedPassword" type="password" placeholder="New Password">
+            <button type="submit">Update Entry</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Delete Vault Entry</h2>
+        <form id="deleteForm">
+            <input name="entryId" type="number" placeholder="Entry ID" required>
+            <button type="submit">Delete Entry</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>API Direct Test</h2>
+        <div>
+            <select id="method">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+            </select>
+            <input id="path" placeholder="/api/vault/1" value="/api/vault/1">
+            <textarea id="body" placeholder="Request body (JSON)" rows="4"></textarea>
+            <button id="sendRequest">Send Request</button>
+        </div>
+    </section>
+
+    <script>
+        const API_BASE = "";
+        const output = document.getElementById("output");
+
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            output.textContent += `${timestamp} - ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearOutput() {
+            output.textContent = "";
+        }
+
+        async function apiRequest(url, method, data = undefined) {
+            try {
+                const options = {
+                    method,
+                    credentials: "same-origin",
+                    headers: {}
+                };
+
+                if (data !== undefined) {
+                    options.headers["Content-Type"] = "application/json";
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(url, options);
+                const text = await response.text();
+
+                let result = `${method} ${url}\n`;
+                result += `Status: ${response.status} ${response.statusText}\n`;
+                if (text) result += `Response: ${text}\n`;
+                
+                log(result);
+                return response.ok;
+            } catch (error) {
+                log(`Request failed: ${error.message}`);
+                return false;
+            }
+        }
+
+        // Session Status
+        document.getElementById("checkSession").addEventListener("click", async () => {
+            await apiRequest("/api/auth/me", "GET");
+        });
+
+        document.getElementById("logout").addEventListener("click", async () => {
+            await apiRequest("/api/auth/logout", "POST");
+        });
+
+        // Create Vault Entry
+        document.getElementById("createForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            await apiRequest("/api/vault", "POST", {
+                title: form.get("title"),
+                website: form.get("website"),
+                externalUsername: form.get("externalUsername"),
+                generatedPassword: form.get("generatedPassword")
+            });
+        });
+
+        // Retrieve Vault Entry
+        document.getElementById("retrieveForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const entryId = form.get("entryId");
+            await apiRequest(`/api/vault/${entryId}`, "GET");
+        });
+
+        // Update Vault Entry
+        document.getElementById("updateForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const entryId = form.get("entryId");
+            const updateData = {};
+            if (form.get("title")) updateData.title = form.get("title");
+            if (form.get("website")) updateData.website = form.get("website");
+            if (form.get("externalUsername")) updateData.externalUsername = form.get("externalUsername");
+            if (form.get("generatedPassword")) updateData.generatedPassword = form.get("generatedPassword");
+            await apiRequest(`/api/vault/${entryId}`, "PUT", updateData);
+        });
+
+        // Delete Vault Entry
+        document.getElementById("deleteForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const entryId = form.get("entryId");
+            await apiRequest(`/api/vault/${entryId}`, "DELETE");
+        });
+
+        // Direct API Test
+        document.getElementById("sendRequest").addEventListener("click", async () => {
+            const method = document.getElementById("method").value;
+            const path = document.getElementById("path").value;
+            let body = document.getElementById("body").value;
+            try {
+                body = body ? JSON.parse(body) : undefined;
+            } catch {
+                body = undefined;
+            }
+            await apiRequest(path, method, body);
+        });
+    </script>
+</body>
+</html>

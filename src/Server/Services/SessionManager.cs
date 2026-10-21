@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 
 public class SessionManager (
-        StorageService storage,
+        StorageService storageService,
         Cryptographer cryptographer,
         ILogger<SessionManager> logger
     )
@@ -29,7 +29,7 @@ public class SessionManager (
         };
 
         // Create Session Entry into Database
-        if (!storage.CreateSessionEntry(session)) return null;  
+        if (!storageService.CreateSessionEntry(session)) return null;  
 
         // Create Session Result object
         ResultSession result = new()
@@ -39,7 +39,7 @@ public class SessionManager (
         };
 
         // get VaultSalt
-        byte[]? vaultSalt = storage.GetVaultSalt(authenticatedUser.UserID);
+        byte[]? vaultSalt = storageService.GetVaultSalt(authenticatedUser.UserID);
         if(vaultSalt == null) 
         {
             logger.LogError("Unable to find VaultSalt for ID: {ID}", authenticatedUser.UserID);
@@ -59,7 +59,7 @@ public class SessionManager (
         if (!sessionContexts.TryAdd(session.CredentialHash, context))
         {
             logger.LogWarning("Duplicate session context");
-            storage.SetRevokeSessionFlag(session.CredentialHash);
+            storageService.SetRevokeSessionFlag(session.CredentialHash);
             return null;
         }
 
@@ -79,7 +79,7 @@ public class SessionManager (
         String hash = cryptographer.HashSessionCredential(credential);
 
         // Search for active session.
-        SessionCredential? activeSession = storage.GetSessionCredentialByCredentialHash (hash);
+        SessionCredential? activeSession = storageService.GetSessionCredentialByCredentialHash (hash);
         if (activeSession == null) 
         { 
             logger.LogWarning("Session validation failed for UserID: {UserID}", activeSession?.UserID);
@@ -110,7 +110,7 @@ public class SessionManager (
         sessionContexts.TryRemove(hash, out _);
 
         // Revoke in database
-        return storage.SetRevokeSessionFlag(hash);
+        return storageService.SetRevokeSessionFlag(hash);
     }
 
     internal SessionContext? GetSessionContext(string credential)
@@ -119,6 +119,51 @@ public class SessionManager (
         string hash = cryptographer.HashSessionCredential(credential);
         sessionContexts.TryGetValue(hash, out var context);
         return context;
+    }
+
+    // TODO CURRENTLY NO MFA SYSTEM IS SUPPORTED. UPGRADES ANY SESSION.
+    public bool UpgradeSession(string credential, byte[] token)
+    {
+        // TODO IMPLEMENT TOKEN / MFA
+        // if(token) ...
+
+        AuthenticatedUser? authUser = ValidateSession(credential);
+        if(authUser == null)
+        {
+            logger.LogWarning("Won't Upgrade session. No authenticated user.");
+            return false;
+        }
+
+        String hash = cryptographer.HashSessionCredential(credential);
+        if (String.IsNullOrEmpty(hash))
+        {
+            logger.LogError("Failed to create Hash! ");
+            return false;
+        }
+
+        SessionCredential? session = storageService.GetSessionCredentialByCredentialHash(hash);
+        if (session == null)
+        {
+            logger.LogError("Failed to retrieve session! ");
+            return false;
+        }
+
+        SessionContext? context = GetSessionContext(credential);
+
+        if(context != null)  // ← NULL CHECK!
+        {
+            context.AuthLevel = AuthenticationLevel.Full;
+        }
+        else
+        {
+            logger.LogWarning("SessionContext not found in RAM for credential: {hash}", hash);
+            // TODO handle null
+        }
+
+        if(!storageService.UpgradeSession(session)) return false;
+
+        logger.LogInformation("Successfully upgraded Session! ");
+        return true;
     }
 
 }

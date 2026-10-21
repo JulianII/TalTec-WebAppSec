@@ -1,9 +1,11 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using Server.Data;
+using System.Collections.Concurrent;
 
 public class StorageService (PasswordManagerDbContext db,
                             ILogger<StorageService> logger)
 {
+     private const int SessionExpiryTimeMinutes = 5;
+
     public bool CreateVaultEntry(VaultEntry entry)
     {
         try
@@ -164,6 +166,7 @@ public class StorageService (PasswordManagerDbContext db,
             logger.LogError("Cant find entry: Too many entires for single ID: {ID}", entryId);
             throw;
         }
+
         if (entry == null) 
         {
             logger.LogInformation("Cant find entry: No entry found for ID: {ID}", entryId);
@@ -196,6 +199,25 @@ public class StorageService (PasswordManagerDbContext db,
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to delete vault entry {ID}", entryId);
+            return false;
+        }
+    }
+
+    public bool UpgradeSession(SessionCredential session){
+        try
+        {
+            session = db.Sessions.SingleOrDefault(a => a.CredentialHash == session.CredentialHash);
+            if(session == null) return false;
+            
+            session.ExpiresAt = DateTime.UtcNow.AddMinutes(SessionExpiryTimeMinutes);
+            session.AuthLevel = AuthenticationLevel.Full;
+
+            db.SaveChanges();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to Upgrade session for {ID}", session.UserID);
             return false;
         }
     }

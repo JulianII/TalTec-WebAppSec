@@ -8,3 +8,5 @@ obj/
 *.user
 *.userosscache
 *.suo
+
+cmds.txt

@@ -191,5 +191,18 @@ public static class AuthEndpoints
             response.Cookies.Delete("session");
             return Results.Ok();
         });
+
+        app.MapPost("/api/auth/upgrade", (
+            SessionManager sessionManager,
+            HttpRequest request,
+            HttpResponse response,
+            ILoggerFactory loggerFactory) =>
+        {
+            // TODO IMPLEMENT MFA
+            byte[]? mfa = new byte[10];
+            if(!sessionManager.UpgradeSession(request.Cookies["session"], mfa)) return Results.BadRequest();
+
+            return Results.Ok();
+        });
     } 
 }
