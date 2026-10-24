@@ -1,197 +1,723 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Manager - Test</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 650px;
-            margin: 40px auto;
-            padding: 0 16px;
-            background: #f4f4f4;
-            color: #222;
-        }
-
-        section {
-            background: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-        }
-
-        input, button {
-            display: block;
-            box-sizing: border-box;
-            width: 100%;
-            padding: 10px;
-            margin: 8px 0;
-        }
-
-        button {
-            cursor: pointer;
-        }
-
-        #output {
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
-            background: #222;
-            color: #b8ffb8;
-            padding: 15px;
-            border-radius: 8px;
-        }
-    </style>
+    <meta name="description" content="TalTec Password Manager - Securely store and manage your passwords">
+    <title>TalTec Password Manager</title>
+    <link rel="stylesheet" href="/css/app.css">
 </head>
-
 <body>
-    <h1>Password Manager</h1>
+    <div id="app">
+        <!-- ===== Auth Views ===== -->
+        
+        <!-- Login View -->
+        <div id="view-login" class="auth-layout">
+            <div class="auth-card">
+                <div class="auth-card-header">
+                    <div class="auth-card-logo">TT</div>
+                    <h1 class="auth-card-title">Password Manager</h1>
+                    <p class="auth-card-subtitle">Sign in to access your vault</p>
+                </div>
+                
+                <form id="login-form" class="space-y-4">
+                    <div class="alert alert-danger hidden" id="login-error">
+                        <span class="alert-icon">!</span>
+                        <div class="alert-content">
+                            <div class="alert-title">Login Failed</div>
+                            <div class="alert-message" id="login-error-message"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="login-username">Username</label>
+                        <input 
+                            type="text" 
+                            id="login-username" 
+                            class="form-input" 
+                            placeholder="Enter your username"
+                            required
+                            autocomplete="username"
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="login-password">Password</label>
+                        <input 
+                            type="password" 
+                            id="login-password" 
+                            class="form-input" 
+                            placeholder="Enter your password"
+                            required
+                            autocomplete="current-password"
+                        >
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="login-submit">
+                        <span>Sign In</span>
+                        <span class="loading-spinner hidden"></span>
+                    </button>
+                </form>
+                
+                <div class="text-center margin-top-3">
+                    <p class="text-sm text-gray-500">Don't have an account? 
+                        <button class="btn-link" data-action="navigate-to-register">Register</button>
+                    </p>
+                </div>
+            </div>
+        </div>
 
-    <section>
-        <h2>Register</h2>
-        <form id="registerForm">
-            <input name="username" placeholder="Username" required>
-            <input name="password" type="password"
-                   placeholder="Master Password" required>
-            <input name="verifyPassword" type="password"
-                   placeholder="Repeat Master Password" required>
-            <button type="submit">Register</button>
-        </form>
-    </section>
+        <!-- Register View -->
+        <div id="view-register" class="auth-layout hidden">
+            <div class="auth-card">
+                <div class="auth-card-header">
+                    <div class="auth-card-logo">TT</div>
+                    <h1 class="auth-card-title">Create Account</h1>
+                    <p class="auth-card-subtitle">Securely store all your passwords</p>
+                </div>
+                
+                <form id="register-form" class="space-y-4">
+                    <div class="alert alert-danger hidden" id="register-error">
+                        <span class="alert-icon">!</span>
+                        <div class="alert-content">
+                            <div class="alert-title">Registration Failed</div>
+                            <div class="alert-message" id="register-error-message"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="register-username">Username</label>
+                        <input 
+                            type="text" 
+                            id="register-username" 
+                            class="form-input" 
+                            placeholder="Choose a username"
+                            required
+                            autocomplete="username"
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="register-password">Master Password</label>
+                        <input 
+                            type="password" 
+                            id="register-password" 
+                            class="form-input" 
+                            placeholder="Create a strong master password"
+                            required
+                            autocomplete="new-password"
+                        >
+                        <div class="password-strength margin-top-1">
+                            <div class="password-strength-bar" id="password-strength-bar"></div>
+                        </div>
+                        <ul class="password-requirements margin-top-1" id="password-requirements">
+                            <li id="req-length">At least 12 characters</li>
+                            <li id="req-uppercase">Contains uppercase letter</li>
+                            <li id="req-lowercase">Contains lowercase letter</li>
+                            <li id="req-number">Contains a number</li>
+                            <li id="req-special">Contains a special character</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="register-verify-password">Confirm Password</label>
+                        <input 
+                            type="password" 
+                            id="register-verify-password" 
+                            class="form-input" 
+                            placeholder="Confirm your master password"
+                            required
+                            autocomplete="new-password"
+                        >
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="register-submit">
+                        <span>Create Account</span>
+                        <span class="loading-spinner hidden"></span>
+                    </button>
+                </form>
+                
+                <div class="text-center margin-top-3">
+                    <p class="text-sm text-gray-500">Already have an account? 
+                        <button class="btn-link" data-action="navigate-to-login">Sign In</button>
+                    </p>
+                </div>
+            </div>
+        </div>
 
-    <section>
-        <h2>Login</h2>
-        <form id="loginForm">
-            <input name="username" placeholder="Username" required>
-            <input name="password" type="password"
-                   placeholder="Master Password" required>
-            <button type="submit">Login</button>
-        </form>
+        <!-- MFA Setup View -->
+        <div id="view-mfa-setup" class="auth-layout hidden">
+            <div class="auth-card">
+                <div class="auth-card-header">
+                    <div class="auth-card-logo">TT</div>
+                    <h1 class="auth-card-title">Set Up 2FA</h1>
+                    <p class="auth-card-subtitle">Add extra security to your account</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="alert alert-warning">
+                        <span class="alert-icon">!</span>
+                        <div class="alert-content">
+                            <div class="alert-title">Important</div>
+                            <div class="alert-message">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div id="mfa-qr-code" class="margin-bottom-2"></div>
+                        <div class="code-display margin-bottom-2">
+                            <div class="code-display-header">Secret Key</div>
+                            <code id="mfa-secret" class="truncate"></code>
+                            <button class="btn btn-sm btn-secondary" id="copy-secret" data-tooltip="Copy">
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <form id="mfa-verify-form" class="space-y-4">
+                        <div class="alert alert-danger hidden" id="mfa-error">
+                            <span class="alert-icon">!</span>
+                            <div class="alert-content">
+                                <div class="alert-title">Verification Failed</div>
+                                <div class="alert-message" id="mfa-error-message"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="mfa-code">Enter 6-digit code from your authenticator app</label>
+                            <input 
+                                type="text" 
+                                id="mfa-code" 
+                                class="form-input text-center" 
+                                placeholder="000000"
+                                maxlength="6"
+                                required
+                                autocomplete="one-time-code"
+                            >
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-block btn-lg" id="mfa-verify-submit">
+                            <span>Verify and Enable 2FA</span>
+                            <span class="loading-spinner hidden"></span>
+                        </button>
+                    </form>
+                    
+                    <div class="text-center margin-top-3">
+                        <p class="text-sm text-gray-500">
+                            <button class="btn-link text-danger" data-action="skip-mfa">Skip for now</button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <button id="checkSession">Check Session</button>
-        <button id="logout">Logout</button>
-    </section>
+        <!-- MFA Upgrade View (for existing sessions) -->
+        <div id="view-mfa-upgrade" class="auth-layout hidden">
+            <div class="auth-card">
+                <div class="auth-card-header">
+                    <div class="auth-card-logo">TT</div>
+                    <h1 class="auth-card-title">Two-Factor Authentication</h1>
+                    <p class="auth-card-subtitle">Verify your identity to upgrade your session</p>
+                </div>
+                
+                <form id="mfa-upgrade-form" class="space-y-4">
+                    <div class="alert alert-danger hidden" id="mfa-upgrade-error">
+                        <span class="alert-icon">!</span>
+                        <div class="alert-content">
+                            <div class="alert-title">Verification Failed</div>
+                            <div class="alert-message" id="mfa-upgrade-error-message"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="mfa-upgrade-code">Enter 6-digit code from your authenticator app</label>
+                        <input 
+                            type="text" 
+                            id="mfa-upgrade-code" 
+                            class="form-input text-center" 
+                            placeholder="000000"
+                            maxlength="6"
+                            required
+                            autocomplete="one-time-code"
+                        >
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="mfa-upgrade-submit">
+                        <span>Verify and Upgrade</span>
+                        <span class="loading-spinner hidden"></span>
+                    </button>
+                </form>
+                
+                <div class="text-center margin-top-3">
+                    <p class="text-sm text-gray-500">
+                        <button class="btn-link" data-action="logout">Sign Out</button>
+                    </p>
+                </div>
+            </div>
+        </div>
 
-    <section>
-        <h2>Create Vault Entry</h2>
-        <form id="vaultForm">
-            <input name="title" placeholder="Title" required>
-            <input name="website" placeholder="Website" required>
-            <input name="externalUsername"
-                   placeholder="Website Username" required>
-            <input name="generatedPassword" type="password"
-                   placeholder="Website Password" required>
-            <button type="submit">Save Entry</button>
-        </form>
-    </section>
+        <!-- ===== App Views ===== -->
+        
+        <div id="app-layout" class="app-layout hidden">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="app-header-brand">
+                    <strong>TalTec</strong> Password Manager
+                </div>
+                <div class="app-header-user">
+                    <span id="user-display-name" class="hidden sm:block"></span>
+                    <button class="btn btn-secondary btn-sm" data-action="navigate-to-profile">
+                        Profile
+                    </button>
+                    <button class="btn btn-danger btn-sm" data-action="logout">
+                        Sign Out
+                    </button>
+                </div>
+            </header>
+            
+            <main class="app-main">
+                <!-- Dashboard View -->
+                <div id="view-dashboard" class="dashboard-layout">
+                    <!-- Sidebar -->
+                    <aside class="dashboard-sidebar">
+                        <nav class="nav">
+                            <a href="#" class="nav-item active" data-action="navigate-to-dashboard">
+                                <span class="nav-icon">!</span> Dashboard
+                            </a>
+                            <a href="#" class="nav-item" data-action="navigate-to-vault">
+                                <span class="nav-icon">@</span> My Vault
+                            </a>
+                            <a href="#" class="nav-item" data-action="navigate-to-generate">
+                                <span class="nav-icon">#</span> Generate Password
+                            </a>
+                            <a href="#" class="nav-item" data-action="navigate-to-settings">
+                                <span class="nav-icon">?</span> Settings
+                            </a>
+                        </nav>
+                    </aside>
+                    
+                    <!-- Content -->
+                    <div class="dashboard-content">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">Welcome back!</h2>
+                            </div>
+                            <div class="space-y-4">
+                                <p>Your password vault is secure. Here's a quick overview:</p>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div class="card">
+                                        <h3 class="text-sm text-gray-500 uppercase">Total Entries</h3>
+                                        <p class="text-3xl font-bold margin-top-1" id="dashboard-total-entries">0</p>
+                                    </div>
+                                    <div class="card">
+                                        <h3 class="text-sm text-gray-500 uppercase">Vault Health</h3>
+                                        <p class="text-3xl font-bold margin-top-1">
+                                            <span class="badge badge-success">Secure</span>
+                                        </p>
+                                    </div>
+                                    <div class="card">
+                                        <h3 class="text-sm text-gray-500 uppercase">Last Backup</h3>
+                                        <p class="text-3xl font-bold margin-top-1 text-gray-500">Never</p>
+                                    </div>
+                                </div>
+                                <div class="margin-top-4">
+                                    <h3>Quick Actions</h3>
+                                    <div class="margin-top-2 space-x-2">
+                                        <button class="btn btn-primary" data-action="navigate-to-vault">
+                                            View All Entries
+                                        </button>
+                                        <button class="btn btn-secondary" data-action="navigate-to-generate">
+                                            Generate Password
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-    <h2>API Response</h2>
-    <pre id="output">Ready.</pre>
+                <!-- Vault View -->
+                <div id="view-vault" class="hidden">
+                    <div class="card">
+                        <div class="card-header d-flex justify-between align-center">
+                            <h2 class="card-title">Password Vault</h2>
+                            <button class="btn btn-primary" data-action="open-create-entry-modal">
+                                <span>+</span> Add Entry
+                            </button>
+                        </div>
+                        
+                        <!-- Vault Table / Grid -->
+                        <div id="vault-entries-container">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">!</div>
+                                <h3 class="empty-state-title">No entries yet</h3>
+                                <p>Start by adding your first password entry</p>
+                                <button class="btn btn-primary margin-top-2" data-action="open-create-entry-modal">
+                                    Add Your First Entry
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-    <script>
-        // Change these paths if your endpoint routes differ.
-        const API = {
-            register: "/api/auth/register",
-            login: "/api/auth/login",
-            me: "/api/auth/me",
-            logout: "/api/auth/logout",
-            createVaultEntry: "/api/vault"
-        };
+                <!-- Generate Password View -->
+                <div id="view-generate" class="hidden">
+                    <div class="card max-w-2xl margin-auto">
+                        <div class="card-header">
+                            <h2 class="card-title">Password Generator</h2>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div class="alert alert-warning">
+                                <span class="alert-icon">!</span>
+                                <div class="alert-content">
+                                    <div class="alert-title">Important</div>
+                                    <div class="alert-message">
+                                        Never share generated passwords. Use a unique password for each service.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Generated Password</label>
+                                <div class="code-display margin-bottom-2">
+                                    <code id="generated-password-display" class="font-mono text-lg">Click Generate to create a password</code>
+                                    <button class="btn btn-sm btn-secondary" id="copy-generated-password" data-tooltip="Copy">
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="form-group">
+                                    <label class="form-label" for="password-length">Length</label>
+                                    <input 
+                                        type="number" 
+                                        id="password-length" 
+                                        class="form-input" 
+                                        value="32"
+                                        min="8"
+                                        max="64"
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Password Strength</label>
+                                    <select id="password-strength-select" class="form-input">
+                                        <option value="high">High (Letters, Numbers, Special)</option>
+                                        <option value="medium">Medium (Letters, Numbers)</option>
+                                        <option value="low">Low (Letters only)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="exclude-similar" checked>
+                                    <span>Exclude similar characters (l, I, 1, O, 0)</span>
+                                </label>
+                            </div>
+                            
+                            <button class="btn btn-primary btn-lg btn-block" id="generate-password-btn">
+                                <span>Generate Password</span>
+                                <span class="loading-spinner hidden"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
-        const output = document.getElementById("output");
+                <!-- Settings View -->
+                <div id="view-settings" class="hidden">
+                    <div class="card max-w-2xl margin-auto">
+                        <div class="card-header">
+                            <h2 class="card-title">Account Settings</h2>
+                        </div>
+                        
+                        <div class="space-y-6">
+                            <!-- Session Info -->
+                            <div class="card">
+                                <h3 class="margin-bottom-2">Session Information</h3>
+                                <div class="space-y-2">
+                                    <p><strong>Authentication Level:</strong> <span id="session-auth-level" class="badge badge-warning">Reduced</span></p>
+                                    <p><strong>Session Expires:</strong> <span id="session-expires"></span></p>
+                                    <div class="margin-top-2">
+                                        <button class="btn btn-warning" id="upgrade-session-btn" data-action="navigate-to-mfa-upgrade">
+                                            Upgrade Session with MFA
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 2FA Settings -->
+                            <div class="card">
+                                <h3 class="margin-bottom-2">Two-Factor Authentication</h3>
+                                <div class="space-y-2">
+                                    <p><strong>Status:</strong> <span id="totp-status" class="badge badge-danger">Disabled</span></p>
+                                    <p class="text-sm text-gray-500 margin-bottom-2">
+                                        Two-factor authentication adds an extra layer of security to your account.
+                                    </p>
+                                    <div class="space-x-2">
+                                        <button class="btn btn-primary" id="enable-totp-btn" data-action="navigate-to-mfa-setup">
+                                            Enable 2FA
+                                        </button>
+                                        <button class="btn btn-danger hidden" id="disable-totp-btn">
+                                            Disable 2FA
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Danger Zone -->
+                            <div class="card border-danger">
+                                <h3 class="margin-bottom-2 text-danger">Danger Zone</h3>
+                                <div class="space-y-2">
+                                    <p class="text-danger">These actions are irreversible. Please proceed with caution.</p>
+                                    <button class="btn btn-danger" id="delete-account-btn">
+                                        Delete Account
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-        // Send JSON requests and display the server response.
-        async function apiRequest(url, method, data = undefined) {
-            try {
-                const options = {
-                    method,
-                    credentials: "same-origin",
-                    headers: {}
-                };
+                <!-- Profile View -->
+                <div id="view-profile" class="hidden">
+                    <div class="card max-w-2xl margin-auto">
+                        <div class="card-header">
+                            <h2 class="card-title">Profile</h2>
+                        </div>
+                        
+                        <div class="space-y-6">
+                            <div class="text-center margin-bottom-4">
+                                <div class="auth-card-logo margin-auto" style="width: 80px; height: 80px; font-size: 2rem;">
+                                    {initial}
+                                </div>
+                                <h3 class="margin-top-2" id="profile-username"></h3>
+                            </div>
+                            
+                            <div class="card">
+                                <h3 class="margin-bottom-2">Account Information</h3>
+                                <div class="space-y-2">
+                                    <p><strong>Username:</strong> <span id="profile-username-display"></span></p>
+                                    <p><strong>Account Created:</strong> <span id="profile-created"></span></p>
+                                    <p><strong>Last Login:</strong> <span id="profile-last-login"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
 
-                if (data !== undefined) {
-                    options.headers["Content-Type"] = "application/json";
-                    options.body = JSON.stringify(data);
-                }
+        <!-- ===== Modals ===== -->
+        
+        <!-- Create Entry Modal -->
+        <div id="modal-create-entry" class="modal-overlay hidden">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>Create New Entry</h2>
+                    <button class="modal-close" data-action="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="create-entry-form" class="space-y-4">
+                        <div class="alert alert-danger hidden" id="create-entry-error">
+                            <span class="alert-icon">!</span>
+                            <div class="alert-content">
+                                <div class="alert-title">Error</div>
+                                <div class="alert-message" id="create-entry-error-message"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="entry-title">Title</label>
+                            <input type="text" id="entry-title" class="form-input" placeholder="e.g., Google" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="entry-website">Website</label>
+                            <input type="url" id="entry-website" class="form-input" placeholder="https://google.com" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="entry-username">Username / Email</label>
+                            <input type="text" id="entry-username" class="form-input" placeholder="your@email.com" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="entry-password">Password</label>
+                            <div class="d-flex gap-2">
+                                <input type="password" id="entry-password" class="form-input flex-1" placeholder="••••••••" required>
+                                <button type="button" class="btn btn-secondary" id="toggle-password-visibility">
+                                    Show
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="entry-generate-password">
+                                <span>Generate a secure password</span>
+                            </label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-action="close-modal">Cancel</button>
+                    <button type="submit" form="create-entry-form" class="btn btn-primary" id="create-entry-submit">
+                        <span>Save Entry</span>
+                        <span class="loading-spinner hidden"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
 
-                const response = await fetch(url, options);
-                const text = await response.text();
+        <!-- View Entry Modal -->
+        <div id="modal-view-entry" class="modal-overlay hidden">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 id="view-entry-title">Entry Details</h2>
+                    <button class="modal-close" data-action="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="space-y-4">
+                        <div class="entry-card">
+                            <div class="entry-card-icon">@</div>
+                            <div class="entry-card-info">
+                                <h3 class="entry-card-title" id="view-entry-title-display"></h3>
+                                <p class="entry-card-website" id="view-entry-website"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h3 class="margin-bottom-2">Credentials</h3>
+                            <div class="space-y-2">
+                                <div>
+                                    <label class="text-sm text-gray-500">Username / Email</label>
+                                    <div class="code-display margin-top-1">
+                                        <code id="view-entry-username"></code>
+                                        <button class="btn btn-sm btn-secondary" data-action="copy-username">
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-gray-500">Password</label>
+                                    <div class="code-display margin-top-1">
+                                        <code id="view-entry-password"></code>
+                                        <button class="btn btn-sm btn-secondary" data-action="copy-password">
+                                            Copy
+                                        </button>
+                                        <button class="btn btn-sm btn-secondary" data-action="toggle-password-visibility-modal">
+                                            Show
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h3 class="margin-bottom-2">Entry Information</h3>
+                            <div class="space-y-2">
+                                <p><strong>Created:</strong> <span id="view-entry-created"></span></p>
+                                <p><strong>Last Updated:</strong> <span id="view-entry-updated"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-danger" data-action="delete-entry">Delete Entry</button>
+                    <button class="btn btn-secondary" data-action="edit-entry">Edit</button>
+                    <button class="btn btn-primary" data-action="close-modal">Close</button>
+                </div>
+            </div>
+        </div>
 
-                output.textContent =
-                    `${method} ${url}\n` +
-                    `Status: ${response.status} ${response.statusText}\n\n` +
-                    (text || "(empty response)");
+        <!-- Edit Entry Modal -->
+        <div id="modal-edit-entry" class="modal-overlay hidden">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>Edit Entry</h2>
+                    <button class="modal-close" data-action="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-entry-form" class="space-y-4">
+                        <div class="alert alert-danger hidden" id="edit-entry-error">
+                            <span class="alert-icon">!</span>
+                            <div class="alert-content">
+                                <div class="alert-title">Error</div>
+                                <div class="alert-message" id="edit-entry-error-message"></div>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="edit-entry-id">
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="edit-entry-title">Title</label>
+                            <input type="text" id="edit-entry-title" class="form-input" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="edit-entry-website">Website</label>
+                            <input type="url" id="edit-entry-website" class="form-input" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="edit-entry-username">Username / Email</label>
+                            <input type="text" id="edit-entry-username" class="form-input" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="edit-entry-password">Password</label>
+                            <input type="password" id="edit-entry-password" class="form-input" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-action="close-modal">Cancel</button>
+                    <button type="submit" form="edit-entry-form" class="btn btn-primary" id="edit-entry-submit">
+                        <span>Save Changes</span>
+                        <span class="loading-spinner hidden"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
 
-                return response.ok;
-            } catch (error) {
-                output.textContent = `Request failed: ${error.message}`;
-                return false;
-            }
-        }
+        <!-- Delete Confirmation Modal -->
+        <div id="modal-delete-confirm" class="modal-overlay hidden">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>Delete Entry</h2>
+                    <button class="modal-close" data-action="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <span class="alert-icon">!</span>
+                        <div class="alert-content">
+                            <div class="alert-title">Are you sure?</div>
+                            <div class="alert-message">This action cannot be undone. The password entry will be permanently deleted.</div>
+                        </div>
+                    </div>
+                    <p class="margin-top-2">
+                        You are about to delete: <strong id="delete-confirm-title"></strong>
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-action="close-modal">Cancel</button>
+                    <button class="btn btn-danger" id="confirm-delete-btn">
+                        <span>Delete Permanently</span>
+                        <span class="loading-spinner hidden"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
 
-        // Register a new account.
-        document.getElementById("registerForm")
-            .addEventListener("submit", async event => {
-                event.preventDefault();
+        <!-- Notification Toast -->
+        <div id="toast" class="toast hidden">
+            <div class="toast-icon"></div>
+            <div class="toast-message"></div>
+        </div>
+    </div>
 
-                const form = new FormData(event.target);
-
-                await apiRequest(API.register, "POST", {
-                    username: form.get("username"),
-                    password: form.get("password"),
-                    verifyPassword: form.get("verifyPassword")
-                });
-            });
-
-        // Log in and let the browser receive the session cookie.
-        document.getElementById("loginForm")
-            .addEventListener("submit", async event => {
-                event.preventDefault();
-
-                const form = new FormData(event.target);
-
-                await apiRequest(API.login, "POST", {
-                    username: form.get("username"),
-                    password: form.get("password")
-                });
-            });
-
-        // Check whether the server accepts the current session.
-        document.getElementById("checkSession")
-            .addEventListener("click", async () => {
-                await apiRequest(API.me, "GET");
-            });
-
-        // Revoke the current session.
-        document.getElementById("logout")
-            .addEventListener("click", async () => {
-                await apiRequest(API.logout, "POST");
-            });
-
-        // Submit a vault entry; the master password is NOT sent.
-        document.getElementById("vaultForm")
-            .addEventListener("submit", async event => {
-                event.preventDefault();
-
-                const form = new FormData(event.target);
-
-                const success = await apiRequest(
-                    API.createVaultEntry,
-                    "POST",
-                    {
-                        title: form.get("title"),
-                        website: form.get("website"),
-                        externalUsername: form.get("externalUsername"),
-                        generatedPassword: form.get("generatedPassword")
-                    }
-                );
-
-                if (success) {
-                    event.target.reset();
-                }
-            });
-    </script>
+    <script src="/js/app.js"></script>
 </body>
 </html>

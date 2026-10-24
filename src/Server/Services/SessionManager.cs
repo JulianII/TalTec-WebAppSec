@@ -6,7 +6,7 @@ public class SessionManager (
         ILogger<SessionManager> logger
     )
 {
-    private readonly ConcurrentDictionary<string, SessionContext> sessionContexts = new();
+    private static readonly ConcurrentDictionary<string, SessionContext> sessionContexts = new();
 
     private const int SessionExpiryTimeMinutes = 5;
 
@@ -121,12 +121,8 @@ public class SessionManager (
         return context;
     }
 
-    // TODO CURRENTLY NO MFA SYSTEM IS SUPPORTED. UPGRADES ANY SESSION.
-    public bool UpgradeSession(string credential, byte[] token)
+    public bool UpgradeSession(string credential)
     {
-        // TODO IMPLEMENT TOKEN / MFA
-        // if(token) ...
-
         AuthenticatedUser? authUser = ValidateSession(credential);
         if(authUser == null)
         {
@@ -150,14 +146,13 @@ public class SessionManager (
 
         SessionContext? context = GetSessionContext(credential);
 
-        if(context != null)  // ← NULL CHECK!
+        if(context != null)
         {
             context.AuthLevel = AuthenticationLevel.Full;
         }
         else
         {
             logger.LogWarning("SessionContext not found in RAM for credential: {hash}", hash);
-            // TODO handle null
         }
 
         if(!storageService.UpgradeSession(session)) return false;

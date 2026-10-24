@@ -50,14 +50,14 @@ public static class AuthEndpoints
             {
                 HttpOnly = true,
                 Secure = true,
-                SameSite = SameSiteMode.Lax,
+                SameSite = SameSiteMode.None,
                 Path = "/",
                 Expires = session.ExpiresAt
             });
 
             logger.LogInformation("Successful Login for {username} at {time}", request.Username, DateTime.UtcNow);
 
-            return Results.Ok();
+            return Results.Ok(user);
         });
 
         app.MapPost("/api/auth/register", (
@@ -102,13 +102,13 @@ public static class AuthEndpoints
             {
                 HttpOnly = true,
                 Secure = true,
-                SameSite = SameSiteMode.Lax,
+                SameSite = SameSiteMode.None,
                 Path = "/",
                 Expires = session.ExpiresAt
             });
 
             logger.LogInformation("Successful registration for {username} at {time}", request.Username, DateTime.UtcNow);
-            return Results.Ok();
+            return Results.Ok(authenticated);
         });
 
 
@@ -162,15 +162,145 @@ public static class AuthEndpoints
         });
 
         app.MapPost("/api/auth/upgrade", (
+            RequestMfaUpgrade requestMfa,
             SessionManager sessionManager,
+            AuthenticationService authenticationService,
+            StorageService storageService,
             HttpRequest request,
             HttpResponse response,
             ILoggerFactory loggerFactory) =>
         {
-            // TODO IMPLEMENT MFA
-            byte[]? mfa = new byte[10];
-            if(!sessionManager.UpgradeSession(request.Cookies["session"], mfa)) return Results.BadRequest();
+            ILogger logger = loggerFactory.CreateLogger("AuthEndpoints.Upgrade");
 
+            string? cookieCredential = request.Cookies["session"];
+            if(string.IsNullOrEmpty(cookieCredential))
+            {
+                logger.LogWarning("Upgrade failed: No session cookie at {time}", DateTime.UtcNow);
+                return Results.Unauthorized();
+            }
+
+            AuthenticatedUser? user = sessionManager.ValidateSession(cookieCredential);
+            if(user == null)
+            {
+                logger.LogWarning("Upgrade failed: Invalid session at {time}", DateTime.UtcNow);
+                return Results.Unauthorized();
+            }
+
+            User? databaseUser = storageService.GetUser(user.UserID);
+            if(databaseUser == null || !databaseUser.TotpEnabled || string.IsNullOrEmpty(databaseUser.TotpSecret))
+            {
+                logger.LogWarning("Upgrade failed: User {userID} has no TOTP enabled", user.UserID);
+                return Results.BadRequest("MFA not enabled for this user");
+            }
+
+            if(!authenticationService.VerifyCode(databaseUser.TotpSecret, requestMfa.Code))
+            {
+                logger.LogWarning("Upgrade failed: Invalid TOTP code for user {userID}", user.UserID);
+                return Results.BadRequest("Invalid MFA code");
+            }
+
+            if(!sessionManager.UpgradeSession(cookieCredential))
+            {
+                logger.LogWarning("Upgrade failed: Could not upgrade session for user {userID}", user.UserID);
+                return Results.Problem();
+            }
+
+            logger.LogInformation("Successfully upgraded session for user {userID} at {time}", user.UserID, DateTime.UtcNow);
+            return Results.Ok();
+        });
+
+        app.MapGet("/api/auth/totp/setup", (
+            SessionManager sessionManager,
+            AuthenticationService authenticationService,
+            StorageService storageService,
+            HttpRequest request,
+            ILoggerFactory loggerFactory) =>
+        {
+            ILogger logger = loggerFactory.CreateLogger("AuthEndpoints.TotpSetup");
+
+            string? cookieCredential = request.Cookies["session"];
+            if(string.IsNullOrEmpty(cookieCredential))
+            {
+                logger.LogWarning("TOTP setup failed: No session cookie at {time}", DateTime.UtcNow);
+                return Results.Unauthorized();
+            }
+
+            AuthenticatedUser? user = sessionManager.ValidateSession(cookieCredential);
+            if(user == null)
+            {
+                logger.LogWarning("TOTP setup failed: Invalid session at {time}", DateTime.UtcNow);
+                return Results.Unauthorized();
+            }
+
+            User? databaseUser = storageService.GetUser(user.UserID);
+            if(databaseUser == null)
+            {
+                logger.LogWarning("TOTP setup failed: User not found for ID {userID}", user.UserID);
+                return Results.NotFound();
+            }
+
+            // Generate a new TOTP secret
+            string secret = authenticationService.GenerateSecret();
+            string qrCodeUrl = authenticationService.GetQrCodeUrl(secret, databaseUser.Username);
+
+            logger.LogInformation("TOTP setup initiated for user {userID} at {time}", user.UserID, DateTime.UtcNow);
+            
+            return Results.Ok(new ResponseTotpSetup
+            {
+                Secret = secret,
+                QrCodeUrl = qrCodeUrl
+            });
+        });
+
+        app.MapPost("/api/auth/totp/enable", (
+            RequestTotpEnable requestTotp,
+            SessionManager sessionManager,
+            AuthenticationService authenticationService,
+            StorageService storageService,
+            HttpRequest request,
+            ILoggerFactory loggerFactory) =>
+        {
+            ILogger logger = loggerFactory.CreateLogger("AuthEndpoints.TotpEnable");
+
+            string? cookieCredential = request.Cookies["session"];
+            if(string.IsNullOrEmpty(cookieCredential))
+            {
+                logger.LogWarning("TOTP enable failed: No session cookie at {time}", DateTime.UtcNow);
+                return Results.Unauthorized();
+            }
+
+            AuthenticatedUser? user = sessionManager.ValidateSession(cookieCredential);
+            if(user == null)
+            {
+                logger.LogWarning("TOTP enable failed: Invalid session at {time}", DateTime.UtcNow);
+                return Results.Unauthorized();
+            }
+
+            User? databaseUser = storageService.GetUser(user.UserID);
+            if(databaseUser == null)
+            {
+                logger.LogWarning("TOTP enable failed: User not found for ID {userID}", user.UserID);
+                return Results.NotFound();
+            }
+
+            // Verify the code matches the secret
+            if(!authenticationService.VerifyCode(requestTotp.Secret, requestTotp.Code))
+            {
+                logger.LogWarning("TOTP enable failed: Invalid code for user {userID}", user.UserID);
+                return Results.BadRequest("Invalid TOTP code");
+            }
+
+            // Save the secret and enable TOTP for the user
+            databaseUser.TotpSecret = requestTotp.Secret;
+            databaseUser.TotpEnabled = true;
+            
+            if(!storageService.SaveUserChanges(databaseUser))
+            {
+                logger.LogWarning("TOTP enable failed: Could not save TOTP settings for user {userID}", user.UserID);
+                return Results.Problem();
+            }
+
+            logger.LogInformation("TOTP enabled for user {userID} at {time}", user.UserID, DateTime.UtcNow);
             return Results.Ok();
         });
     } 

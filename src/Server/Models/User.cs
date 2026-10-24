@@ -10,6 +10,9 @@ public class User
     public byte[] PasswordSalt       { get; set; } // Salt used to generate the password verifier
     public byte[] VaultSalt          { get; set; } // Salt used to derive the vault key
 
+    public string? TotpSecret { get; set; }      // Base32 encoded
+    public bool TotpEnabled { get; set; } = false;
+
     // EF Core navigation property representing the user's vault entries.
     public ICollection<VaultEntry> VaultEntries { get; set; } = new List<VaultEntry>();
 }

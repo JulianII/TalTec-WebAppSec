@@ -204,10 +204,14 @@ public class StorageService (PasswordManagerDbContext db,
     }
 
     public bool UpgradeSession(SessionCredential session){
+        if (session == null) return false;
+        
         try
         {
-            session = db.Sessions.SingleOrDefault(a => a.CredentialHash == session.CredentialHash);
-            if(session == null) return false;
+            var dbSession = db.Sessions.SingleOrDefault(a => a.CredentialHash == session.CredentialHash);
+            if(dbSession == null) return false;
+            
+            session = dbSession;
             
             session.ExpiresAt = DateTime.UtcNow.AddMinutes(SessionExpiryTimeMinutes);
             session.AuthLevel = AuthenticationLevel.Full;
@@ -218,6 +222,24 @@ public class StorageService (PasswordManagerDbContext db,
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to Upgrade session for {ID}", session.UserID);
+            return false;
+        }
+    }
+
+    public bool SaveUserChanges(User user)
+    {
+        if (user == null) return false;
+        
+        try
+        {
+            db.Users.Update(user);
+            db.SaveChanges();
+            logger.LogInformation("User {userID} updated successfully", user.UserID);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to save changes for user {ID}", user?.UserID ?? 0);
             return false;
         }
     }

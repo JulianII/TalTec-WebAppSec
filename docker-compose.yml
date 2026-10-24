@@ -1,17 +1,24 @@
-services:
+version: '3.8'
 
+services:
   server:
     build:
       context: ./src/Server
     container_name: passwordmanager-server
     ports:
       - "8080:8080"
+      - "8443:8443"
     environment:
+      ASPNETCORE_ENVIRONMENT: Development
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      ASPNETCORE_HTTPS_PORT: 8443
+      ASPNETCORE_URLS: https://+:8443;http://+:8080
     depends_on:
       - db
+    volumes:
+      - ./src/Server/Migrations:/src/Migrations
 
   migration:
     build:
@@ -36,7 +43,5 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-
 volumes:
-
   postgres_data:

@@ -63,6 +63,12 @@ namespace Server.Migrations
                         .IsRequired()
                         .HasColumnType("bytea");
 
+                    b.Property<bool>("TotpEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TotpSecret")
+                        .HasColumnType("text");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasColumnType("text");
