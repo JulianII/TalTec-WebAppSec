@@ -20,15 +20,9 @@ builder.Services.AddScoped<VaultManager>();
 
 var app = builder.Build();
 
+app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
-
-// Enable CORS - allow credentials and same-origin requests
-app.UseCors(builder => builder
-    .WithOrigins("https://localhost:8443", "http://localhost:8080", "http://localhost:5234", "http://localhost")
-    .AllowAnyHeader()
-    .AllowAnyMethod()
-    .AllowCredentials());
 
 app.MapGet("/api/test", () =>
 {

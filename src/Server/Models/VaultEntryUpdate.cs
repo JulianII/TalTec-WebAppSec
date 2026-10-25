@@ -1,8 +1,9 @@
 public class VaultEntryUpdate
 {
-    public string Title { get; set; }            // User-defined name of the vault entry
-    public string Website { get; set; }          // Website the credentials belong to
+    public string Title { get; set; } = string.Empty;   // User-defined name of the vault entry
+    public string Website { get; set; } = string.Empty; // Website the credentials belong to
 
-    public byte[] EncryptedUsername { get; set; } // Encrypted username for the external account
-    public byte[] EncryptedPassword { get; set; } // Encrypted password for the external account
+    // Plaintext request values are encrypted by the server before persistence.
+    public string ExternalUsername { get; set; } = string.Empty;  // Username used to log in to the external account
+    public string GeneratedPassword { get; set; } = string.Empty; // Password used to log in to the external account
 }

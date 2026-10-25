@@ -4,6 +4,6 @@
 
 public enum AuthenticationLevel
 {
-    Reduced,    // The user may only add new entries or retrieve credentials
-    Full        // The user has full access to the vault and may edit entries
+    Reduced,    // The user may add new entries
+    Full        // The user may add, retrieve, edit, and delete vault entries
 }

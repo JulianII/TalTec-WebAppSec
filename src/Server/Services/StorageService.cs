@@ -146,61 +146,57 @@ public class StorageService (PasswordManagerDbContext db,
         return true;
     }
 
-    public VaultEntry? GetVaultEntry (int entryId)
+    public VaultEntry? GetVaultEntryForUser(int entryId, int userId)
     {
-        VaultEntry? entry = db.VaultEntries.SingleOrDefault(a => a.EntryId == entryId);
+        VaultEntry? entry = db.VaultEntries.SingleOrDefault(a => a.EntryId == entryId && a.UserId == userId);
         if(entry == null) logger.LogError("Unable to retrieve EntryID: {ID}", entryId);
 
         return entry;
     }
 
-    // TODO extensive logging.
-    public bool UpdateVaultEntry (VaultEntryUpdate entryUpdate, int entryId)
+    public List<VaultEntry> GetVaultEntriesForUser(int userId)
     {
-        VaultEntry? entry;
+        return db.VaultEntries
+            .Where(entry => entry.UserId == userId)
+            .OrderBy(entry => entry.EntryId)
+            .ToList();
+    }
 
-        // Get user from DB by username
-        try { entry = db.VaultEntries.SingleOrDefault(a => a.EntryId == entryId); }
-        catch (System.InvalidOperationException)
-        {
-            logger.LogError("Cant find entry: Too many entires for single ID: {ID}", entryId);
-            throw;
-        }
-
+    public bool UpdateVaultEntry(
+        int entryId,
+        int userId,
+        string title,
+        string website,
+        byte[] encryptedUsername,
+        byte[] encryptedPassword)
+    {
+        VaultEntry? entry = db.VaultEntries.SingleOrDefault(a => a.EntryId == entryId && a.UserId == userId);
         if (entry == null) 
         {
-            logger.LogInformation("Cant find entry: No entry found for ID: {ID}", entryId);
+            logger.LogInformation("Can't update entry {ID} for user {UserID}: entry not found", entryId, userId);
             return false;
         }
 
-        entry.Title = entryUpdate.Title;
-        entry.Website = entryUpdate.Website;
-        entry.EncryptedPassword = entryUpdate.EncryptedPassword;
-        entry.EncryptedUsername = entryUpdate.EncryptedUsername;
+        entry.Title = title;
+        entry.Website = website;
+        entry.EncryptedPassword = encryptedPassword;
+        entry.EncryptedUsername = encryptedUsername;
         entry.UpdatedAt = DateTime.UtcNow;
 
         db.SaveChanges();
-        logger.LogInformation("EntryID {entry} Updated forUser: {id} at {time}", entryId, entry.EntryId, DateTime.UtcNow);
+        logger.LogInformation("EntryID {entry} updated for user {user}", entryId, userId);
 
         return true;
     }
 
-    public bool DeleteVaultEntry(int entryId)
+    public bool DeleteVaultEntry(int entryId, int userId)
     {
-        try
-        {
-            VaultEntry? entry = db.VaultEntries.SingleOrDefault(e => e.EntryId == entryId);
-            if (entry == null) return false;
+        VaultEntry? entry = db.VaultEntries.SingleOrDefault(e => e.EntryId == entryId && e.UserId == userId);
+        if (entry == null) return false;
 
-            db.VaultEntries.Remove(entry);
-            db.SaveChanges();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to delete vault entry {ID}", entryId);
-            return false;
-        }
+        db.VaultEntries.Remove(entry);
+        db.SaveChanges();
+        return true;
     }
 
     public bool UpgradeSession(SessionCredential session){

@@ -24,7 +24,7 @@ public class VaultManager (
 
         // Encrypt password using the VaultKey from the session context
         SessionContext? context = sessionManager.GetSessionContext(sessionCredential);
-        if (context == null)
+        if (context == null || !HasMatchingContext(userAuth, context))
         {
             logger.LogError("Unable to find Session Context for user: {user}", userAuth.UserID);
             return false;
@@ -61,54 +61,64 @@ public class VaultManager (
         return true;
     }
 
+    public List<VaultEntryUnencrypted>? GetVaultEntries(AuthenticatedUser user, SessionContext context)
+    {
+        if (!CheckAuthenticationLevel(user, AuthenticationLevel.Full) || !HasMatchingContext(user, context))
+            return null;
+
+        List<VaultEntryUnencrypted> decryptedEntries = [];
+        foreach (VaultEntry entry in storageService.GetVaultEntriesForUser(user.UserID))
+        {
+            VaultEntryUnencrypted? decryptedEntry = DecryptEntry(entry, context);
+            if (decryptedEntry == null) return null;
+            decryptedEntries.Add(decryptedEntry);
+        }
+
+        return decryptedEntries;
+    }
+
     public VaultEntryUnencrypted? GetVaultEntry (int entryId, AuthenticatedUser user, SessionContext context)
     {
-        if(!CheckAuthenticationLevel(user, AuthenticationLevel.Full)) return null;
+        if (!CheckAuthenticationLevel(user, AuthenticationLevel.Full) || !HasMatchingContext(user, context))
+            return null;
 
-        VaultEntryUnencrypted entryUnencrypted = new VaultEntryUnencrypted();
-
-        // Get whole Vault Entry
-        VaultEntry? entry = storageService.GetVaultEntry(entryId);
+        VaultEntry? entry = storageService.GetVaultEntryForUser(entryId, user.UserID);
         if(entry == null)
         {
             logger.LogError("Failed to get vault entry. Entry doesn't exist. Entry ID {ID}", entryId);
             return null;
         }
 
-        if(CheckUserIDs(entryId, user.UserID)) return null;
-
-        string? plainPassword = cryptographer.Decrypt(entry.EncryptedPassword, context.VaultKey);
-        if (String.IsNullOrEmpty(plainPassword))
-        {
-            logger.LogError("Unable to decrypt Password for UserID: {user} EntryID:{entry}", user.UserID, entryId);    
-            return null;
-        }
-        entryUnencrypted.Password = plainPassword;
-
-        string? plainUsername = cryptographer.Decrypt(entry.EncryptedUsername, context.VaultKey);
-        if (String.IsNullOrEmpty(plainUsername))
-        {
-            logger.LogError("Unable to decrypt Username for UserID: {user} EntryID:{entry}", user.UserID, entryId);    
-            return null;
-        }
-        entryUnencrypted.Username = plainUsername;
-
-        return entryUnencrypted;
+        return DecryptEntry(entry, context);
     }
 
-    public bool EditVaultEntry (AuthenticatedUser user, VaultEntryUpdate entryUpdate, int entryId)
+    public bool EditVaultEntry(
+        AuthenticatedUser user,
+        SessionContext context,
+        VaultEntryUpdate entryUpdate,
+        int entryId)
     {
-        if(!CheckAuthenticationLevel(user, AuthenticationLevel.Full)) return false;
-        if(!CheckUserIDs(entryId, user.UserID)) return false;
-
-        VaultEntry? entry = storageService.GetVaultEntry(entryId);
-        if (entry == null)
+        if (!CheckAuthenticationLevel(user, AuthenticationLevel.Full) || !HasMatchingContext(user, context))
         {
-            logger.LogError("Failed to edit vault entry. Entry doesn't exist. Entry ID {ID}", entryId);
             return false;
         }
 
-        storageService.UpdateVaultEntry(entryUpdate, entryId);
+        byte[]? encryptedPassword = cryptographer.EncryptMessage(entryUpdate.GeneratedPassword, context.VaultKey);
+        byte[]? encryptedUsername = cryptographer.EncryptMessage(entryUpdate.ExternalUsername, context.VaultKey);
+        if (encryptedPassword == null || encryptedUsername == null)
+        {
+            logger.LogWarning("Could not encrypt updated vault credentials for entry {EntryID}", entryId);
+            return false;
+        }
+
+        if (!storageService.UpdateVaultEntry(
+                entryId,
+                user.UserID,
+                entryUpdate.Title,
+                entryUpdate.Website,
+                encryptedUsername,
+                encryptedPassword))
+            return false;
 
         logger.LogInformation("Vault Entry {entry} Updated by: {user}", entryId, user.UserID);
         return true;
@@ -118,10 +128,7 @@ public class VaultManager (
     {
         if(!CheckAuthenticationLevel(user, AuthenticationLevel.Full)) return false;
 
-        VaultEntry entry = storageService.GetVaultEntry(entryId);
-        if(!CheckUserIDs(entry.UserId, user.UserID)) return false;
-
-        if (!storageService.DeleteVaultEntry(entryId))
+        if (!storageService.DeleteVaultEntry(entryId, user.UserID))
         {
             logger.LogError("Failed to delete entry: {entry}", entryId);
             return false;
@@ -132,18 +139,40 @@ public class VaultManager (
 
     private bool CheckAuthenticationLevel (AuthenticatedUser user, AuthenticationLevel requiredLevel)
     {
-        if(user.AuthenticationLevel == requiredLevel) return true;
+        if (user.AuthenticationLevel == AuthenticationLevel.Full ||
+            (requiredLevel == AuthenticationLevel.Reduced &&
+             user.AuthenticationLevel == AuthenticationLevel.Reduced))
+            return true;
 
         logger.LogWarning("Authentication level is insufficient. ");
         return false;
     }
 
-    private bool CheckUserIDs(int entryUserId, int userId)
+    private bool HasMatchingContext(AuthenticatedUser user, SessionContext context)
     {
-        if(entryUserId == userId) return true;
-        
-        logger.LogWarning("UserIDs don't match! ID: {id} tried. ", userId);
+        if (context.UserID == user.UserID) return true;
+
+        logger.LogWarning("Session context user does not match authenticated user {UserID}", user.UserID);
         return false;
-        
+    }
+
+    private VaultEntryUnencrypted? DecryptEntry(VaultEntry entry, SessionContext context)
+    {
+        string? username = cryptographer.Decrypt(entry.EncryptedUsername, context.VaultKey);
+        string? password = cryptographer.Decrypt(entry.EncryptedPassword, context.VaultKey);
+        if (username == null || password == null)
+        {
+            logger.LogError("Unable to decrypt credentials for vault entry {EntryID}", entry.EntryId);
+            return null;
+        }
+
+        return new VaultEntryUnencrypted
+        {
+            EntryId = entry.EntryId,
+            Title = entry.Title,
+            Website = entry.Website,
+            Username = username,
+            Password = password
+        };
     }
 }

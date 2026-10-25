@@ -116,6 +116,7 @@ public static class AuthEndpoints
         app.MapGet("/api/auth/me", (
             HttpRequest request,
             SessionManager sessionManager,
+            StorageService storageService,
             ILoggerFactory loggerFactory) =>
         {
             ILogger logger = loggerFactory.CreateLogger("AuthEndpoints.Me");
@@ -134,7 +135,20 @@ public static class AuthEndpoints
                 return Results.Unauthorized();
             }
 
-            return Results.Ok(user);
+            User? databaseUser = storageService.GetUser(user.UserID);
+            if (databaseUser == null)
+            {
+                logger.LogWarning("Session user {userID} was not found", user.UserID);
+                return Results.Unauthorized();
+            }
+
+            return Results.Ok(new
+            {
+                user.UserID,
+                databaseUser.Username,
+                user.AuthenticationLevel,
+                databaseUser.TotpEnabled
+            });
         });
 
 
@@ -239,6 +253,12 @@ public static class AuthEndpoints
                 return Results.NotFound();
             }
 
+            if (user.AuthenticationLevel != AuthenticationLevel.Reduced || databaseUser.TotpEnabled)
+            {
+                logger.LogWarning("TOTP setup is not available for user {userID}", user.UserID);
+                return Results.Conflict("TOTP is already enabled or the session is not eligible for setup");
+            }
+
             // Generate a new TOTP secret
             string secret = authenticationService.GenerateSecret();
             string qrCodeUrl = authenticationService.GetQrCodeUrl(secret, databaseUser.Username);
@@ -283,6 +303,12 @@ public static class AuthEndpoints
                 return Results.NotFound();
             }
 
+            if (user.AuthenticationLevel != AuthenticationLevel.Reduced || databaseUser.TotpEnabled)
+            {
+                logger.LogWarning("TOTP enable is not available for user {userID}", user.UserID);
+                return Results.Conflict("TOTP is already enabled or the session is not eligible for setup");
+            }
+
             // Verify the code matches the secret
             if(!authenticationService.VerifyCode(requestTotp.Secret, requestTotp.Code))
             {
@@ -297,6 +323,12 @@ public static class AuthEndpoints
             if(!storageService.SaveUserChanges(databaseUser))
             {
                 logger.LogWarning("TOTP enable failed: Could not save TOTP settings for user {userID}", user.UserID);
+                return Results.Problem();
+            }
+
+            if (!sessionManager.UpgradeSession(cookieCredential))
+            {
+                logger.LogWarning("TOTP was enabled but session upgrade failed for user {userID}", user.UserID);
                 return Results.Problem();
             }
 

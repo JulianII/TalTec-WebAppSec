@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault Entries - Password Manager</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+    <main class="container vault-page">
+        <header class="vault-page-header">
+            <h1>Your vault entries</h1>
+            <p id="vault-user-info"></p>
+        </header>
+        <div id="vault-page-error" class="error hidden" role="alert"></div>
+        <div id="vault-page-status" role="status">Loading your vault...</div>
+        <section id="vault-page-entries" aria-live="polite"></section>
+        <div class="vault-page-actions">
+            <a class="button-link secondary-button" href="/">Back</a>
+            <button type="button" id="vault-refresh-btn">Refresh</button>
+            <button type="button" id="vault-page-logout-btn">Logout</button>
+        </div>
+    </main>
+    <script src="/js/vault.js"></script>
+</body>
+</html>

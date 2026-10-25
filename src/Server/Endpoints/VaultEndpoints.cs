@@ -13,6 +13,7 @@ public static class VaultEndpoints
 
             if (string.IsNullOrWhiteSpace(request.GeneratedPassword) ||
                 string.IsNullOrWhiteSpace(request.ExternalUsername) ||
+                string.IsNullOrWhiteSpace(request.Title) ||
                 string.IsNullOrWhiteSpace(request.Website))
             {
                 logger.LogWarning("Vault Entry request contains empty required fields.");
@@ -20,6 +21,8 @@ public static class VaultEndpoints
             }
 
             string? credentialHash = httpRequest.Cookies["session"];
+            if (string.IsNullOrEmpty(credentialHash))
+                return Results.Unauthorized();
 
             // Verify user access.
             AuthenticatedUser? userAuth = sessionManager.ValidateSession(credentialHash);
@@ -29,44 +32,89 @@ public static class VaultEndpoints
                 return Results.Unauthorized();
             }
 
-            // If CredentialHash is Null, it gets caught inside ValidateSession() above.
-            vaultManager.CreateVaultEntry(credentialHash, userAuth, request);
+            if (!vaultManager.CreateVaultEntry(credentialHash, userAuth, request))
+            {
+                logger.LogError("Failed to create vault entry for user {UserID}", userAuth.UserID);
+                return Results.Problem();
+            }
+
             return Results.Ok();
         });
 
-        app.MapGet("/api/vault/{ID}", (
+        app.MapGet("/api/vault", (
+            SessionManager sessionManager,
+            VaultManager vaultManager,
+            HttpRequest httpRequest,
+            ILoggerFactory loggerFactory) =>
+        {
+            ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.list");
+            string? credential = httpRequest.Cookies["session"];
+            if (string.IsNullOrEmpty(credential))
+                return Results.Unauthorized();
+
+            AuthenticatedUser? userAuth = sessionManager.ValidateSession(credential);
+            if (userAuth == null)
+            {
+                logger.LogWarning("Invalid session credential. Will not list vault entries.");
+                return Results.Unauthorized();
+            }
+
+            if (userAuth.AuthenticationLevel != AuthenticationLevel.Full)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            SessionContext? context = sessionManager.GetSessionContext(credential);
+            if (context == null)
+            {
+                logger.LogWarning("Couldn't retrieve Session Context. Will not list vault entries.");
+                return Results.Unauthorized();
+            }
+
+            List<VaultEntryUnencrypted>? entries = vaultManager.GetVaultEntries(userAuth, context);
+            if (entries == null)
+            {
+                logger.LogError("Failed to list vault entries for user {UserID}", userAuth.UserID);
+                return Results.Problem();
+            }
+
+            return Results.Ok(entries);
+        });
+
+        app.MapGet("/api/vault/{id:int}", (
             int id,
             SessionManager sessionManager,
             VaultManager vaultManager,
             HttpRequest httpRequest,
-            HttpResponse response,
             ILoggerFactory loggerFactory) =>
         {
             ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.get");
+            string? credential = httpRequest.Cookies["session"];
+            if (string.IsNullOrEmpty(credential))
+                return Results.Unauthorized();
 
-            // Verify user access.
-            AuthenticatedUser? userAuth = sessionManager.ValidateSession(httpRequest.Cookies["session"]);
+            AuthenticatedUser? userAuth = sessionManager.ValidateSession(credential);
             if (userAuth == null)
             {
-                logger.LogWarning("Invalid session credential. Will not get Vault entry! ");
+                logger.LogWarning("Invalid session credential. Will not get vault entry.");
                 return Results.Unauthorized();
             }
 
-            SessionContext? context = sessionManager.GetSessionContext(httpRequest.Cookies["session"]);
+            if (userAuth.AuthenticationLevel != AuthenticationLevel.Full)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            SessionContext? context = sessionManager.GetSessionContext(credential);
             if (context == null)
             {
-                logger.LogWarning("Couldn't retrieve Session Context. Will not get Vault entry! ");
+                logger.LogWarning("Couldn't retrieve Session Context. Will not get vault entry.");
                 return Results.Unauthorized();
             }
 
-            VaultEntryUnencrypted? entryUnencrypted = vaultManager.GetVaultEntry(id, userAuth, context);
-            if(entryUnencrypted == null)
+            VaultEntryUnencrypted? entry = vaultManager.GetVaultEntry(id, userAuth, context);
+            if (entry == null)
             {
-                logger.LogWarning("Couldn't retrieve vault-entry. Will not get Vault entry! ");
-                return Results.Unauthorized();
+                return Results.NotFound();
             }
 
-            return Results.Ok(new { message = entryUnencrypted });
+            return Results.Ok(new { message = entry });
         });
 
         app.MapPut("/api/vault/{id}", (
@@ -78,19 +126,40 @@ public static class VaultEndpoints
             ILoggerFactory loggerFactory) =>
         {
             ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.put");
+            string? credential = httpRequest.Cookies["session"];
+            if (string.IsNullOrEmpty(credential))
+                return Results.Unauthorized();
 
-            // Verify user access.
-            AuthenticatedUser? userAuth = sessionManager.ValidateSession(httpRequest.Cookies["session"]);
+            AuthenticatedUser? userAuth = sessionManager.ValidateSession(credential);
             if (userAuth == null)
             {
-                logger.LogWarning("Invalid session credential. Will not edit Vault entry! ");
+                logger.LogWarning("Invalid session credential. Will not edit vault entry.");
                 return Results.Unauthorized();
             }
 
-            if(!vaultManager.EditVaultEntry(userAuth, update, id))
+            if (userAuth.AuthenticationLevel != AuthenticationLevel.Full)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            if (string.IsNullOrWhiteSpace(update.Title) ||
+                string.IsNullOrWhiteSpace(update.Website) ||
+                string.IsNullOrWhiteSpace(update.ExternalUsername) ||
+                string.IsNullOrWhiteSpace(update.GeneratedPassword))
             {
-                logger.LogError("Failed to Edit Fault.");
+                logger.LogWarning("Vault entry update contains empty required fields.");
                 return Results.BadRequest();
+            }
+
+            SessionContext? context = sessionManager.GetSessionContext(credential);
+            if (context == null)
+            {
+                logger.LogWarning("Couldn't retrieve Session Context. Will not edit vault entry.");
+                return Results.Unauthorized();
+            }
+
+            if (!vaultManager.EditVaultEntry(userAuth, context, update, id))
+            {
+                logger.LogError("Failed to edit vault entry {EntryID} for user {UserID}", id, userAuth.UserID);
+                return Results.Problem();
             }
 
             return Results.Ok();
@@ -104,19 +173,24 @@ public static class VaultEndpoints
             ILoggerFactory loggerFactory) =>
         {
             ILogger logger = loggerFactory.CreateLogger("VaultEndpoints.delete");
+            string? credential = httpRequest.Cookies["session"];
+            if (string.IsNullOrEmpty(credential))
+                return Results.Unauthorized();
 
-            // Verify user access.
-            AuthenticatedUser? userAuth = sessionManager.ValidateSession(httpRequest.Cookies["session"]);
+            AuthenticatedUser? userAuth = sessionManager.ValidateSession(credential);
             if (userAuth == null)
             {
-                logger.LogWarning("Invalid session credential. Will not edit Vault entry! ");
+                logger.LogWarning("Invalid session credential. Will not delete vault entry.");
                 return Results.Unauthorized();
             }
 
+            if (userAuth.AuthenticationLevel != AuthenticationLevel.Full)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
             if(!vaultManager.DeleteVaultEntry(userAuth, id))
             {
-                logger.LogError("Failed to delete vault.");
-                return Results.BadRequest();
+                logger.LogInformation("Vault entry {EntryID} was not found for user {UserID}", id, userAuth.UserID);
+                return Results.NotFound();
             }
 
             return Results.Ok();

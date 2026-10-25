@@ -86,10 +86,14 @@ The following topics are outside the scope of this project:
 ### Credential Management
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET | `/api/vault/{id}` | Retrieve single credential |
-| POST | `/api/vault` | Create new credential |
-| PUT | `/api/vault/{id}` | Update existing credential |
-| DELETE | `/api/vault/{id}` | Delete credential (not implemented) |
+| GET | `/api/vault` | List the authenticated user's credentials (Full authorization required) |
+| GET | `/api/vault/{id}` | Retrieve a single credential (Full authorization required) |
+| POST | `/api/vault` | Create a credential |
+| PUT | `/api/vault/{id}` | Update a credential (Full authorization required) |
+| DELETE | `/api/vault/{id}` | Delete a credential (Full authorization required) |
+
+Vault usernames and passwords are encrypted by the server before they are
+stored. Vault entry ownership is checked on reads, updates, and deletes.
 
 ### Utilities
 | Method | Route | Description |
@@ -132,8 +136,12 @@ The following topics are outside the scope of this project:
    ```
 
 ### Access
-- Web UI: `http://localhost:8080`
-- API: `http://localhost:8080/api/...`
+- Web UI: `https://localhost:8443`
+- API: `https://localhost:8443/api/...`
+
+The Docker development setup uses a self-signed certificate. Your browser will
+warn that it is not trusted; accept the warning only for this local development
+instance. Requests made over HTTP on port 8080 are redirected to HTTPS.
 
 ### Stop
 ```bash
