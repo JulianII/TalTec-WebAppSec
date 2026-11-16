@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Diagnostics;
 using Server.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,30 @@ builder.Services.AddScoped<SessionManager>();
 builder.Services.AddScoped<VaultManager>();
 
 var app = builder.Build();
+
+app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
+{
+    var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+    var logger = context.RequestServices
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("UnhandledException");
+
+    logger.LogError(
+        exception,
+        "Unhandled exception processing {Method} {Path}. TraceId: {TraceId}",
+        context.Request.Method,
+        context.Request.Path,
+        context.TraceIdentifier);
+
+    context.Response.Clear();
+    await Results.Problem(
+        statusCode: StatusCodes.Status500InternalServerError,
+        title: "An unexpected error occurred.",
+        extensions: new Dictionary<string, object?>
+        {
+            ["traceId"] = context.TraceIdentifier
+        }).ExecuteAsync(context);
+}));
 
 app.UseHttpsRedirection();
 app.UseDefaultFiles();

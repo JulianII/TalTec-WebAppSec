@@ -32,11 +32,11 @@ public class StorageService (PasswordManagerDbContext db,
         try { user = db.Users.SingleOrDefault(a => a.Username == username); }
         catch (System.InvalidOperationException)
         {
-            logger.LogError("Multiple entries found for username: {username}", username);
+            logger.LogError("Multiple user records found for a username lookup");
             throw;
         }
 
-        if (user == null) logger.LogInformation("Unable to find username: {username}", username);
+        if (user == null) logger.LogInformation("User lookup did not find a matching account");
 
         return user;
     }
@@ -61,7 +61,7 @@ public class StorageService (PasswordManagerDbContext db,
     public byte[]? GetVaultSalt(int userID)
     {
         User? user = db.Users.SingleOrDefault(a => a.UserID == userID);
-        if (user == null) logger.LogInformation("Unable to find username: {ID}", userID);
+        if (user == null) logger.LogInformation("User lookup did not find user {UserId}", userID);
 
         return user?.VaultSalt;
     }
@@ -74,11 +74,11 @@ public class StorageService (PasswordManagerDbContext db,
         }
         catch (System.Exception ex)
         {
-            logger.LogWarning(ex, "Failed to Create User: {username}", user.Username);
+            logger.LogWarning(ex, "Failed to create a user account");
             return false;
         }
 
-        logger.LogInformation("User registered: {username} at {time}", user.Username, DateTime.UtcNow);
+        logger.LogInformation("User account created with ID {UserId}", user.UserID);
         return true;
     }
 
@@ -90,10 +90,7 @@ public class StorageService (PasswordManagerDbContext db,
         }
         catch (System.Exception ex)
         {
-            logger.LogWarning("Failed to Create Session for ID: {id} - {type}: {message}",
-                                session.UserID,
-                                ex.GetType().Name,
-                                ex.Message);
+            logger.LogWarning(ex, "Failed to create session for user {UserId}", session.UserID);
             return false;
         }
 
@@ -117,7 +114,7 @@ public class StorageService (PasswordManagerDbContext db,
             throw;
         }
 
-        if (credential == null) logger.LogInformation("Can't get session: Failed to find credential for hash: {hash}", credentialHash);
+        if (credential == null) logger.LogInformation("Session lookup did not find a matching credential");
 
         return credential;
     }
@@ -130,12 +127,12 @@ public class StorageService (PasswordManagerDbContext db,
         try { session = db.Sessions.SingleOrDefault(a => a.CredentialHash == credentialHash); }
         catch (System.InvalidOperationException)
         {
-            logger.LogError("Cant revoke session: Too many sessions for single hash: {hash}", credentialHash);
+            logger.LogError("Cannot revoke session: multiple sessions found for a credential");
             throw;
         }
         if (session == null) 
         {
-            logger.LogInformation("Cant revoke session: Failed to find session for hash: {hash}", credentialHash);
+            logger.LogInformation("Cannot revoke session: credential was not found");
             return false;
         }
 

@@ -26,7 +26,7 @@ public static class AuthEndpoints
             AuthenticatedUser? user = authenticationService.LoginUser(request);
             if (user == null)
             {
-                logger.LogWarning("Failed login for user: {username} at {time}", request.Username, DateTime.UtcNow);
+                logger.LogWarning("Login endpoint rejected credentials");
                 return Results.Unauthorized();
             }
 
@@ -34,14 +34,14 @@ public static class AuthEndpoints
             ResultSession? session = sessionManager.CreateSession(user, request.Password);
             if (session == null)
             {
-                logger.LogWarning("Failed to create session for user: {username} at {time}", request.Username, DateTime.UtcNow);
+                logger.LogWarning("Failed to create a login session");
                 return Results.Problem();
             }
 
             // Validate the created session and check that it belongs to the authenticated user
             if(sessionManager.ValidateSession(session.Credential)?.UserID != user.UserID)
             {
-                logger.LogWarning("Failed to validate session for user: {username} at {time}", request.Username, DateTime.UtcNow);
+                logger.LogWarning("Failed to validate a newly created login session");
                 return Results.Problem();
             }
 
@@ -55,7 +55,7 @@ public static class AuthEndpoints
                 Expires = session.ExpiresAt
             });
 
-            logger.LogInformation("Successful Login for {username} at {time}", request.Username, DateTime.UtcNow);
+            logger.LogInformation("Login endpoint created a session for user {UserId}", user.UserID);
 
             return Results.Ok(user);
         });
@@ -71,7 +71,7 @@ public static class AuthEndpoints
         {
             ILogger logger = loggerFactory.CreateLogger("AuthEndpoints.Register");
 
-            logger.LogInformation("New user tried to register: {username} ", request.Username);
+            logger.LogInformation("User registration was requested");
 
             if(request.Password != request.VerifyPassword)
             {
@@ -86,14 +86,14 @@ public static class AuthEndpoints
             ResultSession? session = sessionManager.CreateSession(authenticated, request.Password);
             if (session == null)
             {
-                logger.LogWarning("Failed to create session for user: {username} at {time}", request.Username, DateTime.UtcNow);
+                logger.LogWarning("Failed to create a session after registration");
                 return Results.Problem();
             }
 
             // Validate the created session and check that it belongs to the authenticated user
             if(sessionManager.ValidateSession(session.Credential)?.UserID != authenticated.UserID)
             {
-                logger.LogWarning("Failed to validate session for user: {username} at {time}", request.Username, DateTime.UtcNow);
+                logger.LogWarning("Failed to validate a newly created registration session");
                 return Results.Problem();
             }
 
@@ -107,7 +107,7 @@ public static class AuthEndpoints
                 Expires = session.ExpiresAt
             });
 
-            logger.LogInformation("Successful registration for {username} at {time}", request.Username, DateTime.UtcNow);
+            logger.LogInformation("Registration completed for user {UserId}", authenticated.UserID);
             return Results.Ok(authenticated);
         });
 

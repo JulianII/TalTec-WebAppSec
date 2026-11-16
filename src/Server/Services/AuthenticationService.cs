@@ -15,14 +15,14 @@ public class AuthenticationService(
 
     public AuthenticatedUser? LoginUser(RequestLogin request)
     {
-        logger.LogInformation("Login Attempt for {username}", request.Username);
+        logger.LogInformation("Login attempt");
 
         AuthenticatedUser authenticatedUser = new AuthenticatedUser();
 
         User? databaseUser = storageService.GetUser(request.Username);
         if(databaseUser == null)
         {
-            logger.LogWarning("User: {username} not found. ", request.Username);
+            logger.LogWarning("Login failed: account was not found");
             return null;
         }
 
@@ -31,9 +31,9 @@ public class AuthenticationService(
         // Compare Password hashes
         if (cryptographer.VerifyArgon2idPassword(request.Password, databaseUser.PasswordSalt, databaseUser.PasswordVerifier)){
             authenticatedUser.AuthenticationLevel = AuthenticationLevel.Reduced;
-            logger.LogInformation("Login Successfull for user: {username}", request.Username);
+            logger.LogInformation("Login succeeded for user {UserId}", databaseUser.UserID);
         } else {
-            logger.LogWarning("Invalid Login for user: {username}", request.Username);
+            logger.LogWarning("Login failed: invalid credentials");
             return null;
         }
 
@@ -58,7 +58,7 @@ public class AuthenticationService(
 
         if (!storageService.CreateUser(databaseEntry))
         {
-            logger.LogWarning("Database failed to create user: {username}", request.Username);
+            logger.LogWarning("Database failed to create a user account");
             return null;
         }
 
@@ -72,7 +72,7 @@ public class AuthenticationService(
 
         if (authenticated == null)
         {
-            logger.LogError("Failed to authenticate just created user: {username}", request.Username);
+            logger.LogError("Failed to authenticate a newly created user account");
             return null;
         }
 

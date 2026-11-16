@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   server:
     build:
@@ -16,7 +14,10 @@ services:
       ASPNETCORE_HTTPS_PORT: 8443
       ASPNETCORE_URLS: https://+:8443;http://+:8080
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
     volumes:
       - ./src/Server/Migrations:/src/Migrations
 
@@ -24,12 +25,14 @@ services:
     build:
       context: ./src/Server
       dockerfile: Dockerfile.migration
+    command: database update
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - ./src/Server/Migrations:/src/Migrations
 
@@ -40,6 +43,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

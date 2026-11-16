@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "TalTec Password Manager",
+  "version": "0.1.0",
+  "description": "Fills matching credentials from your TalTec vault into websites.",
+  "minimum_chrome_version": "102",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://localhost:8443/*"
+  ],
+  "action": {
+    "default_title": "TalTec Password Manager",
+    "default_popup": "popup.html"
+  }
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TalTec Password Manager</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <main>
+        <header>
+            <h1>TalTec Vault</h1>
+            <button id="refresh-button" class="icon-button" type="button" aria-label="Refresh" title="Refresh">↻</button>
+        </header>
+
+        <p id="status" role="status" aria-live="polite">Checking connection …</p>
+        <p id="site" class="site hidden"></p>
+        <section id="entries" aria-label="Matching credentials"></section>
+
+        <footer>
+            <button id="open-app-button" class="secondary hidden" type="button">Open web app / sign in</button>
+            <p class="privacy-note">Credentials are filled into a matching HTTPS login form only after you click.</p>
+        </footer>
+    </main>
+    <script src="popup.js"></script>
+</body>
+</html>

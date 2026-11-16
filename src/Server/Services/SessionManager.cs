@@ -82,7 +82,7 @@ public class SessionManager (
         SessionCredential? activeSession = storageService.GetSessionCredentialByCredentialHash (hash);
         if (activeSession == null) 
         { 
-            logger.LogWarning("Session validation failed for UserID: {UserID}", activeSession?.UserID);
+            logger.LogWarning("Session validation failed: credential was not found");
             return null; 
         }
 
@@ -152,7 +152,7 @@ public class SessionManager (
         }
         else
         {
-            logger.LogWarning("SessionContext not found in RAM for credential: {hash}", hash);
+            logger.LogWarning("Session context was not found in memory for user {UserId}", authUser.UserID);
         }
 
         if(!storageService.UpgradeSession(session)) return false;

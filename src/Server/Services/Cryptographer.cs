@@ -134,10 +134,10 @@ public class Cryptographer (ILogger<Cryptographer> logger)
         {
             aes.Decrypt(nonce, ct, tag, pt);
         }
-        catch (System.Exception e)
+        catch (CryptographicException)
         {
-            logger.LogError(e, "Decryption Failed");
-            throw;
+            logger.LogWarning("AES-GCM authentication failed while decrypting stored data");
+            return null;
         }
         
 

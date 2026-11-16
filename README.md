@@ -47,6 +47,7 @@ The following topics are outside the scope of this project:
 - Session validation and revocation
 - HTTP-only, Secure cookies
 - Docker-based PostgreSQL integration
+- Chrome/Brave Manifest V3 extension for local development with explicit autofill
 
 ### In Development
 - Vault entry deletion
@@ -55,7 +56,6 @@ The following topics are outside the scope of this project:
 ### Planned Features
 - Multi-factor authentication using Time-based One-Time Passwords (TOTP)
 - Trusted device management
-- Browser extension
 - Rate limiting
 - CSRF protection
 
@@ -106,8 +106,7 @@ stored. Vault entry ownership is checked on reads, updates, and deletes.
 ## How to Run
 
 ### Prerequisites
-- .NET SDK 10.0
-- Docker Desktop
+- Docker Desktop (or Docker Engine with the Compose plugin)
 - Git
 
 ### Setup
@@ -117,22 +116,24 @@ stored. Vault entry ownership is checked on reads, updates, and deletes.
    cd TalTec-WebAppSec
    ```
 
-2. Configure environment variables:
+2. Create the Compose environment file:
    ```bash
    cp .env.example .env
    ```
-   Edit `.env` with your PostgreSQL credentials.
+   On Windows PowerShell, use `Copy-Item .env.example .env`. For a non-local
+   environment, replace the example database password in `.env`.
 
-3. Start the PostgreSQL database:
+3. Build and start the application:
    ```bash
-   docker compose up -d
+   docker compose up --build -d
    ```
+   Compose waits for PostgreSQL to become healthy, applies the EF Core
+   migrations, and then starts the web application. No host-installed .NET SDK
+   or separate `dotnet run` command is needed.
 
-4. Build and run the application:
+4. Confirm the services are running:
    ```bash
-   dotnet restore
-   dotnet build
-   dotnet run --project src/Server
+   docker compose ps
    ```
 
 ### Access
@@ -143,10 +144,22 @@ The Docker development setup uses a self-signed certificate. Your browser will
 warn that it is not trusted; accept the warning only for this local development
 instance. Requests made over HTTP on port 8080 are redirected to HTTPS.
 
+### Browser Extension (Chrome / Brave)
+The Manifest V3 extension uses the existing web-app session and can fill
+matching vault entries into login forms after an explicit click. It is currently
+configured for the local development URL `https://localhost:8443`. Start the
+app, open that URL once to accept its development certificate, sign in and
+complete MFA, then load the `browser-extension` folder as an unpacked extension
+from `chrome://extensions` or `brave://extensions` with Developer mode enabled.
+See [browser-extension/README.md](./browser-extension/README.md) for details.
+
 ### Stop
 ```bash
 docker compose down
 ```
+The database volume is retained when stopping the application. To remove the
+local database and all stored accounts and vault entries as well, run
+`docker compose down --volumes`.
 
 ---
 
@@ -168,6 +181,9 @@ docker compose down
 - Session tokens are 256-bit random values, hashed with SHA-256
 - VaultKey derived from master password + unique salt per user
 - HTTP-only, Secure cookies with 5-minute expiry
+- Unhandled server errors return a generic response with a trace ID; detailed
+  exceptions are logged server-side for diagnosis. Application log messages
+  do not intentionally include passwords, usernames, or session credential hashes.
 
 ---
 ## Project Timeline
