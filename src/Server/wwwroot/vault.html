@@ -15,12 +15,26 @@
         <div id="vault-page-error" class="error hidden" role="alert"></div>
         <div id="vault-page-status" role="status">Loading your vault...</div>
         <section id="vault-page-entries" aria-live="polite"></section>
+        <form id="vault-edit-form" class="hidden">
+            <h2 id="vault-edit-heading">Edit entry</h2>
+            <label for="edit-title">Title</label>
+            <input id="edit-title" type="text" required>
+            <label for="edit-website">Website</label>
+            <input id="edit-website" type="text" required>
+            <label for="edit-username">Username</label>
+            <input id="edit-username" type="text" required>
+            <label for="edit-password">Password</label>
+            <input id="edit-password" type="password" required>
+            <button type="submit">Save changes</button>
+            <button id="vault-edit-cancel" type="button" class="secondary-button">Cancel</button>
+        </form>
         <div class="vault-page-actions">
             <a class="button-link secondary-button" href="/">Back</a>
             <button type="button" id="vault-refresh-btn">Refresh</button>
             <button type="button" id="vault-page-logout-btn">Logout</button>
         </div>
     </main>
+    <script src="/js/api.js"></script>
     <script src="/js/vault.js"></script>
 </body>
 </html>

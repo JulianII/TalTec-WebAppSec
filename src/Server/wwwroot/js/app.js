@@ -7,45 +7,16 @@ const API = {
     upgrade: '/api/auth/upgrade',
     totpSetup: '/api/auth/totp/setup',
     totpEnable: '/api/auth/totp/enable',
-    vault: '/api/vault'
+    vault: '/api/vault',
+    generatePassword: '/api/crypt/generateCred',
+    trustedDevices: '/api/auth/trusted-devices'
 };
+
+const apiRequest = window.secureApiRequest;
 
 // State
 let user = null;
 let currentMfaSecret = '';
-
-// API Request Helper
-async function apiRequest(url, method = 'GET', data = null) {
-    const options = {
-        method,
-        credentials: 'include',
-        headers: {}
-    };
-    
-    if (data) {
-        options.headers['Content-Type'] = 'application/json';
-        options.body = JSON.stringify(data);
-    }
-    
-    try {
-        const response = await fetch(url, options);
-        const responseText = await response.text();
-        let responseData = null;
-
-        if (responseText) {
-            try {
-                responseData = JSON.parse(responseText);
-            } catch {
-                responseData = { message: responseText };
-            }
-        }
-
-        return { ok: response.ok, status: response.status, data: responseData };
-    } catch (error) {
-        console.error('API Error:', error);
-        return { ok: false, status: 0, data: { message: error.message } };
-    }
-}
 
 // Show Error
 function showError(elementId, message) {
@@ -78,11 +49,21 @@ async function checkSession() {
     if (result.ok && result.data) {
         user = result.data;
         
-        // Full auth -> vault
-        if (result.data.authenticationLevel === 1) {
+        if (result.data.authenticationLevel === 1 ||
+            (result.data.totpEnabled && result.data.trustedDevice)) {
             showView('view-vault');
             updateUserInfo();
-            loadEntries();
+            const fullAccess = result.data.authenticationLevel === 1;
+            document.getElementById('open-vault-link').classList.toggle('hidden', !fullAccess);
+            document.getElementById('add-entry-btn').classList.remove('hidden');
+            document.getElementById('reduced-access-info').classList.toggle('hidden', fullAccess);
+            document.getElementById('trusted-device-section').classList.toggle('hidden', !fullAccess);
+            document.getElementById('trust-current-device').classList.toggle(
+                'hidden',
+                Boolean(result.data.trustedDevice));
+            if (fullAccess) {
+                await loadTrustedDevices();
+            }
             return;
         }
         
@@ -217,15 +198,6 @@ document.getElementById('totp-upgrade-form')?.addEventListener('submit', async (
 });
 
 // ===== VAULT =====
-async function loadEntries() {
-    // For now, just show add button
-    // TODO: Implement actual entry loading when backend endpoint exists
-    const entriesEl = document.getElementById('vault-entries');
-    if (entriesEl) {
-        entriesEl.innerHTML = '<p>No vault entries endpoint yet. Use backend directly.</p>';
-    }
-}
-
 // Add entry form handling
 let isAdding = false;
 document.getElementById('add-entry-btn')?.addEventListener('click', () => {
@@ -235,6 +207,19 @@ document.getElementById('add-entry-btn')?.addEventListener('click', () => {
     document.getElementById('vault-website').value = '';
     document.getElementById('vault-username').value = '';
     document.getElementById('vault-password').value = '';
+});
+
+document.getElementById('generate-password-btn')?.addEventListener('click', async () => {
+    const status = document.getElementById('password-generator-status');
+    status.textContent = 'Generating password...';
+    const result = await apiRequest(API.generatePassword, 'POST');
+    if (!result.ok || typeof result.data !== 'string') {
+        status.textContent = 'Could not generate a password. Please try again.';
+        return;
+    }
+
+    document.getElementById('vault-password').value = result.data;
+    status.textContent = 'A password was generated.';
 });
 
 document.getElementById('vault-cancel')?.addEventListener('click', () => {
@@ -260,10 +245,71 @@ document.getElementById('vault-form')?.addEventListener('submit', async (e) => {
     if (result.ok) {
         isAdding = false;
         document.getElementById('vault-form').classList.add('hidden');
-        loadEntries();
+        document.getElementById('password-generator-status').textContent = '';
+        document.getElementById('vault-title').value = '';
+        document.getElementById('vault-website').value = '';
+        document.getElementById('vault-username').value = '';
+        document.getElementById('vault-password').value = '';
     } else {
         alert('Failed to save entry: ' + (result.data?.message || 'Error'));
     }
+});
+
+async function loadTrustedDevices() {
+    const list = document.getElementById('trusted-device-list');
+    const status = document.getElementById('trusted-device-status');
+    list.replaceChildren();
+
+    const result = await apiRequest(API.trustedDevices);
+    if (!result.ok || !Array.isArray(result.data)) {
+        status.textContent = 'Could not load trusted devices.';
+        return;
+    }
+
+    status.textContent = result.data.length
+        ? `${result.data.length} trusted ${result.data.length === 1 ? 'device' : 'devices'}`
+        : 'No trusted devices.';
+
+    for (const device of result.data) {
+        const item = document.createElement('li');
+        const description = document.createElement('span');
+        description.textContent =
+            `Device ${device.deviceID}, added ${new Date(device.createdAt).toLocaleString()}`;
+        const revokeButton = document.createElement('button');
+        revokeButton.type = 'button';
+        revokeButton.textContent = 'Revoke';
+        revokeButton.addEventListener('click', async () => {
+            const revoked = await apiRequest(
+                `${API.trustedDevices}/${encodeURIComponent(device.deviceID)}`,
+                'DELETE');
+            if (!revoked.ok) {
+                status.textContent = 'Could not revoke that trusted device.';
+                return;
+            }
+            if (revoked.data?.currentDeviceRevoked && user) {
+                user.trustedDevice = false;
+                document.getElementById('trust-current-device').classList.remove('hidden');
+            }
+            await loadTrustedDevices();
+        });
+        item.append(description, revokeButton);
+        list.append(item);
+    }
+}
+
+document.getElementById('trust-current-device')?.addEventListener('click', async () => {
+    const status = document.getElementById('trusted-device-status');
+    const result = await apiRequest(API.trustedDevices, 'POST');
+    if (!result.ok) {
+        status.textContent = 'Could not trust this device. Please try again.';
+        return;
+    }
+    if (user) {
+        user.trustedDevice = true;
+    }
+    document.getElementById('trust-current-device').classList.add('hidden');
+    status.textContent = 'This device is now trusted for reduced access.';
+    await loadTrustedDevices();
 });
 
 // ===== LOGOUT =====

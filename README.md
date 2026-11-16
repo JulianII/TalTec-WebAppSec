@@ -43,21 +43,25 @@ The following topics are outside the scope of this project:
 - Session management with 5-minute expiry
 - Argon2id password hashing (19 MiB memory, 2 iterations)
 - AES-256-GCM credential encryption
-- Vault entry creation, retrieval, and updates
+- Vault entry creation, retrieval, updates, and deletion through API and web UI
+- Cryptographically secure password generation in the web UI
+- TOTP enrollment and verification for full authorization
+- Trusted-device registration and revocation; trusted sessions retain reduced
+  access and still require MFA to view or manage existing vault entries
 - Session validation and revocation
 - HTTP-only, Secure cookies
+- CSRF token validation on state-changing API routes
 - Docker-based PostgreSQL integration
 - Chrome/Brave Manifest V3 extension for local development with explicit autofill
+- In-memory, per-client-IP rate limits on authentication, MFA, and vault operations
 
-### In Development
-- Vault entry deletion
-- Full authorization level (currently only Reduced level implemented)
-
-### Planned Features
-- Multi-factor authentication using Time-based One-Time Passwords (TOTP)
-- Trusted device management
-- Rate limiting
-- CSRF protection
+### Remaining Work
+- Validate the database migration and new flows in the local Docker instance.
+- Run and document security tests, including SQL injection, XSS, and
+  cross-user vault access checks; the test plan is in
+  [Documents/Checkpoint-3-Security-Testing.md](./Documents/Checkpoint-3-Security-Testing.md).
+- Draft the Checkpoint 3 report sections for Implementation, Security Analysis,
+  and Conclusion.
 
 ---
 
@@ -82,6 +86,10 @@ The following topics are outside the scope of this project:
 | POST | `/api/auth/login` | Authenticate user |
 | GET | `/api/auth/me` | Get current session info |
 | POST | `/api/auth/logout` | Terminate session |
+| GET | `/api/auth/trusted-devices` | List active trusted devices (Full authorization required) |
+| POST | `/api/auth/trusted-devices` | Trust this device (Full authorization required) |
+| DELETE | `/api/auth/trusted-devices/{deviceId}` | Revoke a trusted device (Full authorization required) |
+| GET | `/api/auth/csrf-token` | Obtain an anti-forgery request token |
 
 ### Credential Management
 | Method | Route | Description |
@@ -181,9 +189,22 @@ local database and all stored accounts and vault entries as well, run
 - Session tokens are 256-bit random values, hashed with SHA-256
 - VaultKey derived from master password + unique salt per user
 - HTTP-only, Secure cookies with 5-minute expiry
+- Trusted-device tokens are stored as hashes, expire after one year, and can be
+  revoked; at most 10 active devices are allowed per account
+- State-changing API calls require a server-validated anti-forgery token
+- Per-client-IP fixed-window limits: login/MFA (5 per minute), registration
+  (5 per hour), MFA setup (3 per hour), session/token reads (120 per minute),
+  vault reads (60 per minute), vault writes (30 per minute), and trusted-device
+  changes (10 per day). Rejected requests return HTTP 429 with a generic
+  response and `Retry-After`.
 - Unhandled server errors return a generic response with a trace ID; detailed
   exceptions are logged server-side for diagnosis. Application log messages
   do not intentionally include passwords, usernames, or session credential hashes.
+
+Rate-limit counters are in memory and apply per server instance. When deploying
+behind a reverse proxy, configure ASP.NET Core forwarded headers to trust only
+the known proxy addresses so limits use the actual client IP. These limits are
+not a substitute for distributed denial-of-service protection.
 
 ---
 ## Project Timeline

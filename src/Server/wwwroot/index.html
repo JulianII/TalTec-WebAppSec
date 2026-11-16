@@ -93,7 +93,8 @@
             <h1>Vault</h1>
             <div id="user-info"></div>
             <p>Manage your saved credentials in the vault.</p>
-            <a class="button-link" href="/vault.html">Open vault entries</a>
+            <p id="reduced-access-info" class="hidden" role="status">This trusted device has reduced access. Complete MFA to view or manage existing vault entries.</p>
+            <a id="open-vault-link" class="button-link" href="/vault.html">Open vault entries</a>
             <form id="vault-form" class="hidden">
                 <div class="form-group">
                     <label>Title:</label>
@@ -101,24 +102,34 @@
                 </div>
                 <div class="form-group">
                     <label>Website:</label>
-                    <input type="text" id="vault-website">
+                    <input type="text" id="vault-website" required>
                 </div>
                 <div class="form-group">
                     <label>Username:</label>
-                    <input type="text" id="vault-username">
+                    <input type="text" id="vault-username" required>
                 </div>
                 <div class="form-group">
                     <label>Password:</label>
-                    <input type="password" id="vault-password">
+                    <input type="password" id="vault-password" required>
+                    <button id="generate-password-btn" type="button" class="secondary-button">Generate password</button>
+                    <p id="password-generator-status" role="status"></p>
                 </div>
                 <button type="submit">Save</button>
                 <button type="button" id="vault-cancel">Cancel</button>
             </form>
             <button id="add-entry-btn">Add Entry</button>
             <button id="logout-btn">Logout</button>
+            <section id="trusted-device-section" class="hidden">
+                <h2>Trusted devices</h2>
+                <p>Trusted devices skip the MFA prompt for reduced access. MFA is still required to open your vault.</p>
+                <button id="trust-current-device" type="button">Trust this device</button>
+                <p id="trusted-device-status" role="status"></p>
+                <ul id="trusted-device-list"></ul>
+            </section>
         </div>
     </div>
 
+    <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>
 </body>
 </html>

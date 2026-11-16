@@ -31,6 +31,6 @@ public static class CryptoEndpoints
                 string password = cryptographer.GeneratePassword(32);
                 
                 return Results.Ok(password);    
-            });
+            }).RequireRateLimiting("vault-write").RequireCsrfProtection();
     }
 }

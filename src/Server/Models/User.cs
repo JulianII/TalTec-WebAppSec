@@ -15,4 +15,6 @@ public class User
 
     // EF Core navigation property representing the user's vault entries.
     public ICollection<VaultEntry> VaultEntries { get; set; } = new List<VaultEntry>();
+    public ICollection<TrustedDeviceCredential> TrustedDevices { get; set; } =
+        new List<TrustedDeviceCredential>();
 }

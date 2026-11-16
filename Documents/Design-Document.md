@@ -187,26 +187,34 @@ The TOTP secret is separate from the vault encryption keys and is used exclusive
 
 ## Trusted Device Token
 
-A trusted device token is used to identify a device that the user has previously chosen to trust.
+A trusted device token identifies a browser the user explicitly chose to trust
+after completing MFA. The token is generated using a cryptographically secure
+random number generator, stored in an `HttpOnly`, `Secure`, `SameSite=Strict`
+cookie, and persisted server-side only as a SHA-256 hash. It is bound to the
+user, expires after one year, and can be revoked from the application. Each
+account may have at most ten active trusted devices.
 
-The token is generated using a cryptographically secure random number generator and is unique to the device.
+The token is not used to encrypt vault data and is never sufficient by itself
+to access existing vault entries. After password authentication, a valid
+trusted-device token avoids the immediate MFA prompt but grants only Reduced
+authorization; TOTP is still required for Full authorization and vault access.
 
-The token is not used to encrypt vault data. Instead, it acts as an additional authentication and device-trust mechanism.
-
-The server does not store the token in plaintext. Instead, a cryptographic hash of the token is stored and compared when the device presents the token.A trusted device token is bound to the corresponding user account and can be revoked.
-
-Possession of a valid trusted device token does not provide direct access to the user's vault. It is only used to satisfy the trusted-device requirement for operations that do not require full authorization.
-
-# **Planned authentication model**
+# **Authentication model**
 <img width="512" height="671" alt="AuthMod" src="https://github.com/user-attachments/assets/a4a17f62-621d-440b-95d2-0deef8d95969" />
 
-The application will use two authentication levels, **reduced authentication** and **full authentication**.
+The application uses two authorization levels, **reduced authentication** and
+**full authentication**.
 
-In reduced authentication, the user authenticates using their username and master password. This provides limited access to their password manager. In full authentication, the user additionally provides the MFA TOTP.
+Reduced authorization follows successful username and master-password
+authentication. A trusted-device token may skip the immediate MFA challenge,
+but does not increase this authorization level. Full authorization follows
+successful TOTP verification and is required to retrieve or manage existing
+vault entries.
 
-A full authentication will always be required upon initial account creation. However after the user created his account he will be able to “trust their current device” this will create a trusted-device token and bind it to the users account. With this token the user will no longer be required to enter their MFA TOTP when adding new external credentials. 
+After successful MFA, the user may explicitly trust the current browser. The
+token is revocable and is not shared with the browser extension.
 
-# Planned Session Model
+# Session Model
 
 The application differentiates between three session levels: unauthenticated session, reduced authorized session, and full authorized session.
 
@@ -218,9 +226,10 @@ An unauthenticated session can transition into either a reduced or full authoriz
 
 **Reduced Authorized Session**
 
-A reduced authorized session is established when the user successfully authenticates using their username and master password and provides a valid trusted-device token.
-
-If the user cannot provide a valid trusted-device token, they will be required to provide an MFA TOTP code. 
+A reduced authorized session is established when the user successfully
+authenticates using their username and master password. A valid trusted-device
+token may suppress an immediate MFA prompt but does not change Reduced
+authorization.
 
 A reduced authorized session provides limited access to the APIs capabilities. The user can perform operations that do not require access to existing sensitive credentials, such as adding new credentials through the browser extension, for example.
 

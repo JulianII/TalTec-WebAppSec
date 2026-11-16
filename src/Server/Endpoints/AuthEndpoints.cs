@@ -7,16 +7,26 @@ using System.Data.Common;
 using Microsoft.OpenApi;
 using System.Text;
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Antiforgery;
 
 public static class AuthEndpoints
 {
     public static void MapAuthEndpoints (this WebApplication app)
     {
+        app.MapGet("/api/auth/csrf-token", (IAntiforgery antiforgery, HttpContext context) =>
+        {
+            var tokens = antiforgery.GetAndStoreTokens(context);
+            return Results.Ok(new { token = tokens.RequestToken });
+        }).RequireRateLimiting("auth-read");
+
         // Handles Users-Login requests and returns respective IResults
         app.MapPost("/api/auth/login", (
             RequestLogin request,
             AuthenticationService authenticationService,
             SessionManager sessionManager,
+            TrustedDeviceService trustedDeviceService,
+            HttpRequest httpRequest,
             HttpResponse response,
             ILoggerFactory loggerFactory) =>
         {
@@ -57,8 +67,12 @@ public static class AuthEndpoints
 
             logger.LogInformation("Login endpoint created a session for user {UserId}", user.UserID);
 
+            trustedDeviceService.IsTrusted(
+                user.UserID,
+                httpRequest.Cookies[TrustedDeviceService.CookieName],
+                updateLastUsed: true);
             return Results.Ok(user);
-        });
+        }).RequireRateLimiting("login").RequireCsrfProtection();
 
         app.MapPost("/api/auth/register", (
             RequestRegistration request,
@@ -109,13 +123,14 @@ public static class AuthEndpoints
 
             logger.LogInformation("Registration completed for user {UserId}", authenticated.UserID);
             return Results.Ok(authenticated);
-        });
+        }).RequireRateLimiting("registration").RequireCsrfProtection();
 
 
         // Temporary API testing endpoint for session validation
         app.MapGet("/api/auth/me", (
             HttpRequest request,
             SessionManager sessionManager,
+            TrustedDeviceService trustedDeviceService,
             StorageService storageService,
             ILoggerFactory loggerFactory) =>
         {
@@ -147,9 +162,12 @@ public static class AuthEndpoints
                 user.UserID,
                 databaseUser.Username,
                 user.AuthenticationLevel,
-                databaseUser.TotpEnabled
+                databaseUser.TotpEnabled,
+                TrustedDevice = trustedDeviceService.IsTrusted(
+                    user.UserID,
+                    request.Cookies[TrustedDeviceService.CookieName])
             });
-        });
+        }).RequireRateLimiting("auth-read");
 
 
         // Handles Users-Login requests and returns respective IResults
@@ -173,7 +191,7 @@ public static class AuthEndpoints
 
             response.Cookies.Delete("session");
             return Results.Ok();
-        });
+        }).RequireCsrfProtection();
 
         app.MapPost("/api/auth/upgrade", (
             RequestMfaUpgrade requestMfa,
@@ -221,7 +239,7 @@ public static class AuthEndpoints
 
             logger.LogInformation("Successfully upgraded session for user {userID} at {time}", user.UserID, DateTime.UtcNow);
             return Results.Ok();
-        });
+        }).RequireRateLimiting("mfa-verification").RequireCsrfProtection();
 
         app.MapGet("/api/auth/totp/setup", (
             SessionManager sessionManager,
@@ -270,7 +288,7 @@ public static class AuthEndpoints
                 Secret = secret,
                 QrCodeUrl = qrCodeUrl
             });
-        });
+        }).RequireRateLimiting("mfa-setup");
 
         app.MapPost("/api/auth/totp/enable", (
             RequestTotpEnable requestTotp,
@@ -334,6 +352,98 @@ public static class AuthEndpoints
 
             logger.LogInformation("TOTP enabled for user {userID} at {time}", user.UserID, DateTime.UtcNow);
             return Results.Ok();
-        });
+        }).RequireRateLimiting("mfa-verification").RequireCsrfProtection();
+
+        app.MapGet("/api/auth/trusted-devices", (
+            SessionManager sessionManager,
+            StorageService storageService,
+            TrustedDeviceService trustedDeviceService,
+            HttpRequest request) =>
+        {
+            string? credential = request.Cookies["session"];
+            AuthenticatedUser? user = sessionManager.ValidateSession(credential);
+            if (user == null) return Results.Unauthorized();
+            if (user.AuthenticationLevel != AuthenticationLevel.Full)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            User? databaseUser = storageService.GetUser(user.UserID);
+            if (databaseUser == null || !databaseUser.TotpEnabled)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            return Results.Ok(trustedDeviceService.GetActiveDevices(user.UserID));
+        }).RequireRateLimiting("auth-read");
+
+        app.MapPost("/api/auth/trusted-devices", (
+            SessionManager sessionManager,
+            StorageService storageService,
+            TrustedDeviceService trustedDeviceService,
+            HttpRequest request,
+            HttpResponse response) =>
+        {
+            string? credential = request.Cookies["session"];
+            AuthenticatedUser? user = sessionManager.ValidateSession(credential);
+            if (user == null) return Results.Unauthorized();
+            if (user.AuthenticationLevel != AuthenticationLevel.Full)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            User? databaseUser = storageService.GetUser(user.UserID);
+            if (databaseUser == null || !databaseUser.TotpEnabled)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            string? token = trustedDeviceService.Create(user.UserID);
+            if (token == null)
+            {
+                return Results.Conflict("The account has reached its trusted-device limit.");
+            }
+
+            response.Cookies.Append(
+                TrustedDeviceService.CookieName,
+                token,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Path = "/api/auth",
+                    Expires = DateTimeOffset.UtcNow.AddDays(
+                        TrustedDeviceService.CookieLifetimeDays)
+                });
+            return Results.Created("/api/auth/trusted-devices", new { });
+        }).RequireRateLimiting("trusted-device").RequireCsrfProtection();
+
+        app.MapDelete("/api/auth/trusted-devices/{deviceId:int}", (
+            int deviceId,
+            SessionManager sessionManager,
+            TrustedDeviceService trustedDeviceService,
+            Cryptographer cryptographer,
+            HttpRequest request,
+            HttpResponse response) =>
+        {
+            string? credential = request.Cookies["session"];
+            AuthenticatedUser? user = sessionManager.ValidateSession(credential);
+            if (user == null) return Results.Unauthorized();
+            if (user.AuthenticationLevel != AuthenticationLevel.Full)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            string? revokedTokenHash = trustedDeviceService.Revoke(user.UserID, deviceId);
+            if (revokedTokenHash == null) return Results.NotFound();
+
+            string? currentToken = request.Cookies[TrustedDeviceService.CookieName];
+            bool currentDeviceRevoked = currentToken != null &&
+                cryptographer.HashSessionCredential(currentToken) == revokedTokenHash;
+            if (currentDeviceRevoked)
+            {
+                response.Cookies.Delete(
+                    TrustedDeviceService.CookieName,
+                    new CookieOptions
+                    {
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict,
+                        Path = "/api/auth"
+                    });
+            }
+
+            return Results.Ok(new { currentDeviceRevoked });
+        }).RequireRateLimiting("trusted-device").RequireCsrfProtection();
     } 
 }

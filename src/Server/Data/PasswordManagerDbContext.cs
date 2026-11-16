@@ -10,6 +10,7 @@ public class PasswordManagerDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<SessionCredential> Sessions { get; set; }
     public DbSet<VaultEntry> VaultEntries { get; set; }
+    public DbSet<TrustedDeviceCredential> TrustedDevices { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,5 +28,18 @@ public class PasswordManagerDbContext : DbContext
             .HasOne(v => v.User)
             .WithMany(u => u.VaultEntries)
             .HasForeignKey(v => v.UserId);
+
+        modelBuilder.Entity<TrustedDeviceCredential>()
+            .HasKey(device => device.DeviceID);
+
+        modelBuilder.Entity<TrustedDeviceCredential>()
+            .HasIndex(device => device.TokenHash)
+            .IsUnique();
+
+        modelBuilder.Entity<TrustedDeviceCredential>()
+            .HasOne<User>()
+            .WithMany(user => user.TrustedDevices)
+            .HasForeignKey(device => device.UserID)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -47,6 +47,43 @@ namespace Server.Migrations
                     b.ToTable("Sessions");
                 });
 
+            modelBuilder.Entity("TrustedDeviceCredential", b =>
+                {
+                    b.Property<int>("DeviceID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("DeviceID"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Revoked")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("DeviceID");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("TrustedDevices");
+                });
+
             modelBuilder.Entity("User", b =>
                 {
                     b.Property<int>("UserID")
@@ -125,6 +162,15 @@ namespace Server.Migrations
                     b.ToTable("VaultEntries");
                 });
 
+            modelBuilder.Entity("TrustedDeviceCredential", b =>
+                {
+                    b.HasOne("User", null)
+                        .WithMany("TrustedDevices")
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VaultEntry", b =>
                 {
                     b.HasOne("User", "User")
@@ -138,6 +184,8 @@ namespace Server.Migrations
 
             modelBuilder.Entity("User", b =>
                 {
+                    b.Navigation("TrustedDevices");
+
                     b.Navigation("VaultEntries");
                 });
 #pragma warning restore 612, 618

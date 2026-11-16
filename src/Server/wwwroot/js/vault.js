@@ -1,25 +1,9 @@
 const entriesElement = document.getElementById('vault-page-entries');
 const statusElement = document.getElementById('vault-page-status');
 const errorElement = document.getElementById('vault-page-error');
-
-async function request(url, method = 'GET') {
-    const response = await fetch(url, {
-        method,
-        credentials: 'include'
-    });
-    const text = await response.text();
-    let data = null;
-
-    if (text) {
-        try {
-            data = JSON.parse(text);
-        } catch {
-            data = { message: text };
-        }
-    }
-
-    return { ok: response.ok, status: response.status, data };
-}
+const request = window.secureApiRequest;
+const editForm = document.getElementById('vault-edit-form');
+let editingEntryId = null;
 
 function showError(message) {
     errorElement.textContent = message;
@@ -69,7 +53,39 @@ function renderEntries(entries) {
             togglePassword.setAttribute('aria-pressed', String(!isVisible));
         });
 
-        card.append(title, website, username, password, togglePassword);
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.textContent = 'Edit';
+        editButton.addEventListener('click', () => {
+            editingEntryId = entry.entryId;
+            document.getElementById('edit-title').value = entry.title;
+            document.getElementById('edit-website').value = entry.website;
+            document.getElementById('edit-username').value = entry.username;
+            document.getElementById('edit-password').value = entry.password;
+            editForm.classList.remove('hidden');
+            editForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'secondary-button';
+        deleteButton.textContent = 'Delete';
+        deleteButton.addEventListener('click', async () => {
+            if (!window.confirm(`Delete "${entry.title}" from your vault?`)) {
+                return;
+            }
+
+            const result = await request(
+                `/api/vault/${encodeURIComponent(entry.entryId)}`,
+                'DELETE');
+            if (!result.ok) {
+                showError('Could not delete this entry. Please refresh and try again.');
+                return;
+            }
+            await loadVault();
+        });
+
+        card.append(title, website, username, password, togglePassword, editButton, deleteButton);
         entriesElement.append(card);
     }
 }
@@ -120,9 +136,9 @@ async function loadVault() {
         }
 
         renderEntries(vault.data);
-    } catch (error) {
+    } catch {
         statusElement.textContent = '';
-        showError(`Could not load vault entries: ${error.message}`);
+        showError('Could not load vault entries. Please try again.');
     }
 }
 
@@ -136,9 +152,40 @@ document.getElementById('vault-page-logout-btn').addEventListener('click', async
         }
 
         window.location.assign('/');
-    } catch (error) {
-        showError(`Could not end the session: ${error.message}`);
+    } catch {
+        showError('Could not end the session. Please try again.');
     }
 });
 
 loadVault();
+
+editForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (editingEntryId === null) {
+        return;
+    }
+
+    errorElement.classList.add('hidden');
+    const result = await request(`/api/vault/${encodeURIComponent(editingEntryId)}`, 'PUT', {
+        title: document.getElementById('edit-title').value,
+        website: document.getElementById('edit-website').value,
+        externalUsername: document.getElementById('edit-username').value,
+        generatedPassword: document.getElementById('edit-password').value
+    });
+
+    if (!result.ok) {
+        showError('Could not update this entry. Please check the fields and try again.');
+        return;
+    }
+
+    editForm.reset();
+    editForm.classList.add('hidden');
+    editingEntryId = null;
+    await loadVault();
+});
+
+document.getElementById('vault-edit-cancel').addEventListener('click', () => {
+    editForm.reset();
+    editForm.classList.add('hidden');
+    editingEntryId = null;
+});

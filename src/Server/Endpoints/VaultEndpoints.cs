@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.RateLimiting;
+
 public static class VaultEndpoints
 {
     public static void MapVaultEndpoints (this WebApplication app)
@@ -39,7 +41,7 @@ public static class VaultEndpoints
             }
 
             return Results.Ok();
-        });
+        }).RequireRateLimiting("vault-write").RequireCsrfProtection();
 
         app.MapGet("/api/vault", (
             SessionManager sessionManager,
@@ -77,7 +79,7 @@ public static class VaultEndpoints
             }
 
             return Results.Ok(entries);
-        });
+        }).RequireRateLimiting("vault-read");
 
         app.MapGet("/api/vault/{id:int}", (
             int id,
@@ -115,7 +117,7 @@ public static class VaultEndpoints
             }
 
             return Results.Ok(new { message = entry });
-        });
+        }).RequireRateLimiting("vault-read");
 
         app.MapPut("/api/vault/{id}", (
             int id,
@@ -163,7 +165,7 @@ public static class VaultEndpoints
             }
 
             return Results.Ok();
-        });
+        }).RequireRateLimiting("vault-write").RequireCsrfProtection();
 
         app.MapDelete("/api/vault/{id}", (
             int id,
@@ -194,6 +196,6 @@ public static class VaultEndpoints
             }
 
             return Results.Ok();
-        });
+        }).RequireRateLimiting("vault-write").RequireCsrfProtection();
     }
 }
