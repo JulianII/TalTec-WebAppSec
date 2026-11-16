@@ -19,10 +19,6 @@ provided with this record.
 | CSRF | Send state-changing request without token | PASS* | Attach sanitized response |
 | Trusted devices | Trust, re-login, revoke, and retry | PASS* | Attach sanitized status or screenshot |
 
-`*` PASS is based on the project owner's confirmation. Attach the listed
-sanitized evidence before submission; do not include passwords, tokens,
-cookies, MFA codes, or vault contents.
-
 ## Static review notes
 
 - Entity Framework Core queries and user-scoped vault lookups were observed.
